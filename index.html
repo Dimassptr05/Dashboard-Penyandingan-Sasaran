@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Relasi Antar-Sasaran Reformasi Birokrasi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-layout">
+    <!-- ======================================================== -->
+    <!-- SIDEBAR UTAMA (HANYA DUA MENU UTAMA SESUAI KETENTUAN)   -->
+    <!-- ======================================================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">RB</div>
+        <div class="brand-info">
+          <h1>Portal Relasi RB</h1>
+          <p>Kementerian PANRB</p>
+        </div>
+      </div>
+
+      <div class="sidebar-nav-title">Menu Utama</div>
+      <nav class="sidebar-menu">
+        <button class="nav-btn active" id="menuInternal" data-menu="internal">
+          <span class="nav-icon">⤳</span>
+          <span class="nav-text">Relasi Internal</span>
+        </button>
+        <button class="nav-btn" id="menuExternal" data-menu="external">
+          <span class="nav-icon">⇄</span>
+          <span class="nav-text">Relasi Eksternal</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- ======================================================== -->
+    <!-- KONTEN UTAMA DENGAN 3 TAHAPAN NAVIGASI STANDAR           -->
+    <!-- ======================================================== -->
+    <div class="main-content">
+      <!-- Topbar Header & Breadcrumbs -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <nav class="breadcrumbs" aria-label="Breadcrumb">
+            <span class="bc-item">Portal RB</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-item" id="bcMenu">Relasi Internal</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-item" id="bcScope">Sasaran 4</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-item active" id="bcStage">Tahap 1: Matriks Relasi</span>
+          </nav>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn-nav-back hidden" id="btnGlobalBack" title="Kembali ke tahapan sebelumnya">
+            <span>←</span>
+            <span id="btnGlobalBackText">Kembali</span>
+          </button>
+          <div class="summary-pill" id="topbarSummaryPill">
+            <span class="summary-dot"></span>
+            <span id="topbarSummaryText">Memuat data...</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stepper / Indikator 3 Tahapan Alur Navigasi -->
+      <div class="stepper-bar">
+        <div class="stepper-track">
+          <button class="step-item active" id="step1Btn" data-target-stage="matrix">
+            <span class="step-num">1</span>
+            <span class="step-label">Matriks Relasi</span>
+          </button>
+          <div class="step-line" id="stepLine1"></div>
+          <button class="step-item" id="step2Btn" data-target-stage="graph">
+            <span class="step-num">2</span>
+            <span class="step-label">Peta Relasi</span>
+          </button>
+          <div class="step-line" id="stepLine2"></div>
+          <button class="step-item" id="step3Btn" data-target-stage="list">
+            <span class="step-num">3</span>
+            <span class="step-label">Daftar Relasi</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Bar Utama Sesuai Format Revisi -->
+      <section class="filter-bar" id="mainFilterBar">
+        <div class="filter-controls-row">
+          <!-- Dropdown Pilihan Sasaran Strategis (Menu Internal: Sasaran 3, 4, 5) -->
+          <div class="filter-group" id="groupInternalSasaranSelect">
+            <label for="selectInternalSasaran">Sasaran Strategis:</label>
+            <select id="selectInternalSasaran" class="select-input">
+              <option value="5" selected>Sasaran 5 — Pelayanan Publik</option>
+              <option value="4">Sasaran 4 — Kapabilitas Kelembagaan</option>
+              <option value="3">Sasaran 3 — Integritas &amp; Inovasi (Data Perlu Diperjelas)</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Sasaran Sumber (Menu Eksternal: Sasaran 1 aktif, Sasaran 2-5 abu-abu/disabled) -->
+          <div class="filter-group hidden" id="groupExtSourceSasaranSelect">
+            <label for="selectExtSourceSasaran" id="labelExtSourceSasaran">Sasaran Sumber:</label>
+            <select id="selectExtSourceSasaran" class="select-input">
+              <option value="1" selected>Sasaran 1 (Transformasi Digital)</option>
+              <option value="2" disabled class="option-disabled">Sasaran 2 (Sistem Merit)</option>
+              <option value="3" disabled class="option-disabled">Sasaran 3 (Integritas &amp; Inovasi)</option>
+              <option value="4" disabled class="option-disabled">Sasaran 4 (Kapabilitas Kelembagaan)</option>
+              <option value="5" disabled class="option-disabled">Sasaran 5 (Pelayanan Publik)</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Sasaran Tujuan (Menu Eksternal: Sasaran 2 s.d. 5 aktif, Sasaran 1 abu-abu/disabled) -->
+          <div class="filter-group hidden" id="groupExtDestSasaranSelect">
+            <label for="selectExtDestSasaran" id="labelExtDestSasaran">Sasaran Tujuan:</label>
+            <select id="selectExtDestSasaran" class="select-input">
+              <option value="ALL" selected>Semua Sasaran Tujuan</option>
+              <option value="1" disabled class="option-disabled">Sasaran 1 (Transformasi Digital)</option>
+              <option value="2">Sasaran 2 (Sistem Merit)</option>
+              <option value="3">Sasaran 3 (Integritas &amp; Inovasi)</option>
+              <option value="4">Sasaran 4 (Kapabilitas Kelembagaan)</option>
+              <option value="5">Sasaran 5 (Pelayanan Publik)</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Indeks Sumber -->
+          <div class="filter-group" id="groupSourceSelect">
+            <label for="selectSource" id="labelSourceSelect">Indeks Sumber:</label>
+            <select id="selectSource" class="select-input">
+              <!-- Dimuat dinamis oleh app.js -->
+            </select>
+          </div>
+
+          <!-- Dropdown Indikator Sumber -->
+          <div class="filter-group" id="groupComponentSelect">
+            <label for="selectComponent" id="labelComponentSelect">Indikator:</label>
+            <select id="selectComponent" class="select-input">
+              <!-- Dimuat dinamis oleh app.js -->
+            </select>
+          </div>
+
+          <!-- Dropdown Indeks Pembanding -->
+          <div class="filter-group" id="groupDestinationSelect">
+            <label for="selectDestination" id="labelDestinationSelect">Indeks Pembanding:</label>
+            <select id="selectDestination" class="select-input">
+              <!-- Dimuat dinamis oleh app.js -->
+            </select>
+          </div>
+
+          <!-- Filter Jenis Keterkaitan -->
+          <div class="filter-group" id="groupRelationTypeSelect">
+            <label for="selectRelationType">Jenis Keterkaitan:</label>
+            <select id="selectRelationType" class="select-input">
+              <!-- Dimuat dinamis oleh app.js -->
+            </select>
+          </div>
+
+          <!-- Pencarian Bebas -->
+          <div class="filter-group filter-search-group">
+            <label for="inputSearchFree">Pencarian Bebas:</label>
+            <input type="text" id="inputSearchFree" class="search-input"
+              placeholder="Cari nama indeks, indikator, kode, atau alasan...">
+          </div>
+
+          <!-- Tombol Reset Filter -->
+          <div class="filter-actions">
+            <button class="btn btn-secondary btn-sm" id="btnResetFilters" title="Kembalikan filter ke kondisi awal">
+              <span>↻</span>
+              <span>Reset Filter</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Penjelasan Logika Agregasi / Hint -->
+        <div class="logic-hint-banner" id="logicNote">
+          <!-- Diisi dinamis oleh app.js -->
+        </div>
+
+        <!-- Banner Konteks Pasangan Aktif -->
+        <div class="context-banner" id="contextBanner">
+          <div class="context-left">
+            <span class="context-tag" id="contextTag">Lingkup Aktif</span>
+            <span class="context-text" id="contextText">Silakan pilih sel pada matriks untuk membedah hubungan di Peta
+              Relasi.</span>
+          </div>
+          <div class="context-right" id="contextActions">
+            <!-- Dynamic context actions -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAHAP 1: MATRIKS RELASI                                  -->
+      <!-- ======================================================== -->
+      <section class="stage-view active" id="stageMatrix">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="matrixTitle">Matriks Relasi Antar-Indeks</h2>
+              <p class="panel-desc" id="matrixDesc">
+                Baris merupakan indeks sumber, dan kolom merupakan indeks pembanding. Klik pada sel yang memiliki relasi
+                (berwarna biru) untuk berpindah ke Peta Relasi.
+              </p>
+            </div>
+            <div class="matrix-header-right">
+              <div class="metric-box" id="matrixMetricBox">
+                <strong id="pairCount">0</strong>
+                <small id="pairUnit">pasangan indikator</small>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btnExportPdfMatrix"
+                title="Unduh Matriks Relasi dalam format PDF" style="display:inline-flex; align-items:center; gap:6px;">
+                <span>📄 Unduh PDF Matriks</span>
+              </button>
+              <div class="matrix-legend">
+                <span class="legend-chip legend-active">
+                  <span class="chip-color chip-blue"></span>
+                  <span>Ada Relasi (Dapat Diklik)</span>
+                </span>
+                <span class="legend-chip legend-inactive">
+                  <span class="chip-color chip-gray"></span>
+                  <span>Tidak Ada Relasi (0)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Area Matriks -->
+          <div class="matrix-scroll-wrapper">
+            <div id="matrixTableContainer">
+              <!-- Matriks dirender secara dinamis oleh app.js -->
+            </div>
+          </div>
+
+          <div class="matrix-footer-fineprint" id="matrixFineprint">
+            <span class="fineprint-text">
+              ℹ <strong>Satuan Penghitungan:</strong> Angka pada sel matriks adalah jumlah <strong>indikator tujuan
+                unik</strong> yang memiliki rujukan tercatat, bukan banyaknya permutasi kombinasi kode indikator skala
+              penilaian.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAHAP 2: PETA RELASI (HANYA KARTU BERELASI)              -->
+      <!-- ======================================================== -->
+      <section class="stage-view hidden" id="stageGraph">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="graphTitle">Peta Relasi Antar-Indikator</h2>
+              <p class="panel-desc" id="graphDesc">
+                Hanya indikator yang memiliki hubungan tercatat yang ditampilkan. Klik kartu tujuan untuk membuka
+                rincian lengkap pada Tahap 3.
+              </p>
+            </div>
+            <div class="graph-top-actions">
+              <div class="metric-box" style="margin-right:12px;">
+                <strong id="mapTotal">0</strong>
+                <small id="mapUnit">indikator tujuan berelasi</small>
+              </div>
+              <button class="btn btn-secondary" id="btnBackToMatrixFromGraph">
+                <span>← Kembali ke Matriks</span>
+              </button>
+              <button class="btn btn-secondary" id="btnExportPdfGraph" title="Unduh Peta Relasi dalam format PDF">
+                <span>📄 Unduh PDF Peta</span>
+              </button>
+              <button class="btn btn-primary" id="btnGoToListFromGraph">
+                <span>Buka Tabel Rincian (Tahap 3) →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Toolbar Peta Relasi: Tab Filter Indeks & Mode Fokus Interaktif -->
+          <div class="graph-toolbar" id="graphToolbar">
+            <div class="graph-inst-tabs" id="graphInstTabs">
+              <!-- Dimuat dinamis oleh renderStageGraph(): [Semua] [IPP] [OP] [IKK] [ZI] -->
+            </div>
+            <div class="graph-display-mode-group">
+              <span class="graph-inst-tabs-label">Tampilan Garis:</span>
+              <button class="btn btn-sm btn-outline-primary btn-graph-mode active" id="btnGraphModeFocus"
+                title="Tampilkan garis terfokus saat kursor menunjuk kartu agar tampilan bersih">
+                <span>🎯 Mode Fokus (Bersih)</span>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btn-graph-mode" id="btnGraphModeAll"
+                title="Tampilkan seluruh garis relasi secara bersamaan">
+                <span>🕸 Semua Garis</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Kanvas Diagram Dua Kolom & SVG Garis Melengkung -->
+          <div class="diagram-viewport" id="diagramViewport">
+            <!-- SVG Canvas untuk Kurva Bezier Halus -->
+            <svg class="diagram-svg" id="diagramSvg">
+              <defs>
+                <marker id="arrowMendukung" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#0284c7" />
+                </marker>
+                <marker id="arrowMelengkapi" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#10b981" />
+                </marker>
+                <marker id="arrowBeririsan" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#8b5cf6" />
+                </marker>
+                <marker id="arrowTumpangTindih" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#f59e0b" />
+                </marker>
+                <marker id="arrowSelaras" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#06b6d4" />
+                </marker>
+                <marker id="arrowActive" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#0284c7" />
+                </marker>
+                <!-- Marker khusus relasi makro eksternal (Teal/Emerald selaras instrumen tujuan PEMDI) -->
+                <marker id="arrowMacroExternal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 7 4 L 1 7 Z" fill="#0f766e" />
+                </marker>
+                <marker id="arrowMacroExternalHover" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"
+                  markerUnits="userSpaceOnUse">
+                  <path d="M 1 1 L 8 4.5 L 1 8 Z" fill="#0d9488" />
+                </marker>
+              </defs>
+              <g id="svgPathGroup"></g>
+            </svg>
+
+            <!-- Grid 2 Kolom: Sumber (Kiri) dan Tujuan (Kanan) -->
+            <div class="diagram-columns-grid">
+              <!-- Kolom Kiri: Sumber Hubungan -->
+              <div class="diagram-column column-source">
+                <div class="column-header">
+                  <span class="column-title" id="colSourceTitle">Indeks / Indikator Sumber</span>
+                  <span class="badge badge-light" id="colSourceCount">0 Kartu</span>
+                </div>
+                <div class="cards-stack" id="containerSourceCards">
+                  <!-- Kartu sumber dimuat dinamis -->
+                </div>
+              </div>
+
+              <!-- Kolom Kanan: Tujuan Hubungan -->
+              <div class="diagram-column column-dest">
+                <div class="column-header">
+                  <span class="column-title" id="colDestTitle">Indeks / Indikator Pembanding</span>
+                  <span class="badge badge-light" id="colDestCount">0 Kartu</span>
+                </div>
+                <div class="cards-stack" id="containerDestCards">
+                  <!-- Kartu tujuan dimuat dinamis -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAHAP 3: DAFTAR RELASI LENGKAP                           -->
+      <!-- ======================================================== -->
+      <section class="stage-view hidden" id="stageList">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="listTitle">Daftar Rincian Hubungan Analitis</h2>
+              <p class="panel-desc" id="listDesc">
+                Rincian keterkaitan berdasarkan pasangan dan indikator terpilih. Menampilkan justifikasi substantif dan
+                jenis keterkaitan.
+              </p>
+            </div>
+            <div class="list-top-actions">
+              <button class="btn btn-secondary" id="btnBackToGraphFromList">
+                <span>← Kembali ke Peta Relasi</span>
+              </button>
+              <button class="btn btn-secondary" id="btnBackToMatrixFromList">
+                <span>← Kembali ke Matriks</span>
+              </button>
+              <button class="btn btn-secondary" id="btnExportPdfList" title="Unduh Daftar Relasi dalam format PDF">
+                <span>📄 Unduh PDF Daftar</span>
+              </button>
+              <button class="btn btn-primary" id="btnExportCsv">
+                <span>📥 Ekspor Hasil Terfilter (CSV)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter jenis dan jumlah relasi (hasil aktual, sebelum daftar tabel) -->
+          <div class="list-summary-toolbar" aria-label="Filter jenis keterkaitan">
+            <div class="list-summary-count" role="status" aria-live="polite">
+              <strong id="listVisibleCount">0</strong>
+              <div>
+                <span>Catatan relasi ditampilkan</span>
+                <small id="listCountSummary">dari 0 catatan pada lingkup ini</small>
+              </div>
+            </div>
+            <div class="list-type-filter">
+              <span class="list-type-title">Filter jenis keterkaitan <small>(pilih satu atau lebih)</small></span>
+              <div class="list-type-options" id="listTypeOptions"></div>
+            </div>
+          </div>
+
+          <!-- Rincian Single Focus (Jika Dipilih dari Klik Kartu/Garis) -->
+          <div class="focus-relation-card hidden" id="focusRelationCard">
+            <!-- Kartu detail relasi fokus -->
+          </div>
+
+          <div class="detail-intro-notice" id="detailIntroNotice"></div>
+
+          <!-- Tabel Rincian Relasi -->
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">No.</th>
+                  <th>Indikator Sumber</th>
+                  <th>Indikator Pembanding</th>
+                  <th style="width: 180px;">Jenis Keterkaitan</th>
+                  <th style="width: 140px; text-align: center;">Aksi Detail</th>
+                </tr>
+              </thead>
+              <tbody id="tableRelationBody">
+                <!-- Baris tabel dimuat dinamis oleh app.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="moreline hidden" id="tableMoreNotice"></div>
+
+          <!-- State Kosong jika tidak ada hasil -->
+          <div class="empty-state hidden" id="listEmptyState">
+            <div class="empty-icon">🔍</div>
+            <h3>Tidak ada relasi pada pasangan yang dipilih</h3>
+            <p>Silakan gunakan tombol reset atau pilih pasangan lain pada Matriks Relasi.</p>
+            <button class="btn btn-secondary" id="btnEmptyReset">Reset Filter</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL ARSITEKTUR & METADATA SISTEM                      -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" id="modalArchitecture">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Arsitektur &amp; Kepatuhan Data Portal RB</h3>
+          <p>Dokumentasi Teknis &amp; Integritas Data Offline (file://)</p>
+        </div>
+        <button class="modal-close" id="btnCloseModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <h4>1. Struktur Mandiri 100% Offline (Self-Contained)</h4>
+        <p>
+          Aplikasi ini beroperasi tanpa backend server, database SQL, PHP, atau dependensi jaringan eksternal. Seluruh
+          data relasi dan indikator disimpan secara terstruktur dalam berkas JavaScript:
+        </p>
+        <ul>
+          <li><code>data-sasaran.js</code>: Basis data utama 783 indikator, 17 indeks, dan seluruh relasi
+            internal/eksternal resmi.</li>
+          <li><code>data-relasi.js</code>: Normalisasi kode indikator dan kelompok indikator Sasaran 5 (128 pasangan
+            indikator unik).</li>
+          <li><code>data-relasi-internal.js</code>: Rujukan internal resmi Sasaran 3 (124 relasi tervalidasi dari Bahan
+            paparan Kamis 3), Sasaran 4, dan Sasaran 5.</li>
+          <li><code>data-relasi-eksternal.js</code>: Rujukan eksternal historis.</li>
+        </ul>
+
+        <h4>2. Alur 3 Tahapan Standar</h4>
+        <p>
+          Navigasi konsisten pada Relasi Internal dan Relasi Eksternal:
+          <strong>Tahap 1 (Matriks Relasi)</strong> → <strong>Tahap 2 (Peta Relasi)</strong> → <strong>Tahap 3 (Daftar
+            Relasi)</strong>.
+        </p>
+
+        <h4>3. Metodologi Agregasi &amp; Kepatuhan Sumber Data</h4>
+        <p>
+          Data diambil persis dari berkas resmi <code>Bahan paparan Kamis 3 (30092026).xlsx</code>:
+        </p>
+        <ul>
+          <li><strong>Sasaran 5:</strong> Nilai pada matriks bukan jumlah kombinasi permutasi kode indikator skala 1–5
+            (yang sebelumnya menghasilkan 1.947 rujukan kode), melainkan jumlah <strong>indikator tujuan unik</strong>.
+            Total 128 pasangan indikator unik pada Sasaran 5 (49 pasangan saat indeks sumber IPP). Semua 2.205 bukti
+            pasangan kode asli tetap disimpan utuh dan disajikan pada tabel rincian Tahap 3.</li>
+          <li><strong>Sasaran 4:</strong> Menampilkan <strong>50 hubungan keterkaitan resmi</strong> antara Kapabilitas
+            Kelembagaan dan 7 indeks pembanding sesuai data terbaru (Mandat: 4, Rentang Kendali: 11, Departementasi: 20,
+            Proses Perencanaan: 11, Pengendalian Risiko: 4).</li>
+          <li><strong>Sasaran 3:</strong> 72 relasi internal aktual antara Instrumen Pengumpulan Data IIIP (92
+            pertanyaan) dan Desain IIIP (34 indikator) tervalidasi resmi dari sheet <code>Copy of Sasaran 3</code>.</li>
+          <li><strong>Relasi Eksternal:</strong> 1.631 pasangan kode rujukan aktif terdata (Sasaran 2 → 1: 17 kode;
+            Sasaran 3 → 1: 120 kode [IIIP: 92, DIIIP: 28]; Sasaran 4 → 1: 76 kode; Sasaran 5 → 1: 1.418 kode). 10
+            rujukan historis SPI ditandai dalam daftar rujukan perlu pemeriksaan sesuai pembaruan Sasaran 3.</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btnDismissModal">Tutup Dokumentasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PREVIEW DOKUMEN PDF RESMI (SEBELUM DOWNLOAD) -->
+  <div class="pdf-preview-modal-overlay hidden" id="pdfPreviewModal" role="dialog" aria-modal="true"
+    aria-labelledby="pdfPreviewTitle">
+    <div class="pdf-preview-modal-container">
+      <div class="pdf-preview-modal-header">
+        <div class="pdf-preview-modal-title-wrap">
+          <span class="pdf-preview-badge">PREVIEW DOKUMEN PDF RESMI</span>
+          <h3 class="pdf-preview-modal-title" id="pdfPreviewTitle">Laporan Dokumen PDF</h3>
+          <p class="pdf-preview-modal-subtitle" id="pdfPreviewSubtitle">Periksa tampilan seluruh halaman sebelum
+            mengunduh.</p>
+        </div>
+        <div class="pdf-preview-modal-actions">
+          <button class="btn btn-secondary btn-sm" id="btnPdfPreviewClose">
+            <span>✕ Tutup</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="btnPdfPreviewDownload"
+            style="background:#0284c7; border-color:#0284c7; font-weight:700;">
+            <span>⬇ Download PDF</span>
+          </button>
+        </div>
+      </div>
+      <div class="pdf-preview-modal-body" id="pdfPreviewBody">
+        <iframe id="pdfPreviewIframe" class="pdf-preview-iframe" title="Pratinjau PDF"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memuat Script Dataset Terlebih Dahulu (Kompatibel Protokol file://) -->
+  <script src="data-sasaran.js"></script>
+  <script src="data-relasi-internal.js"></script>
+  <script src="data-relasi-eksternal.js"></script>
+  <script src="data-relasi.js"></script>
+  <script src="data/rb-relasi-eksternal-terbaru.js"></script>
+  <script src="data/jenis-keterkaitan.js"></script>
+  <script src="data/substansi-indikator.js"></script>
+  <!-- Pustaka Ekspor PDF Mandiri (100% Offline & Kompatibel file://) -->
+  <script src="vendor/html2pdf.bundle.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
