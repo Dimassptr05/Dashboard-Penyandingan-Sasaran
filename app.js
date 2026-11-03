@@ -14,9 +14,259 @@
   // 1. Data Sumber
   const sasaranData = window.RB_SASARAN_DATA || { sasaran: [], instrumen: [], indikator: [], kelompok_s4: [] };
   const relasiInternal = window.RB_RELASI_INTERNAL || { sasaran3: { relasi: [], placeholders: [] }, sasaran4: [], sasaran5: [] };
-  const relasiEksternalLama = window.RB_RELASI_EKSTERNAL || { matriks_5x5: [], relasi: [] };
   const revisiData = window.RB_DATA || null;
   const extLatest = window.RB_EXTERNAL_LATEST || null;
+
+  // Utility Pembersihan Nomor & Kode Teknis untuk Tampilan UI
+  function cleanLabel(text) {
+    if (!text || typeof text !== "string") return "";
+    let s = text.trim();
+    // Hilangkan prefiks ID teknis jika ada, contoh: "SS4-IPPN.1.c.4 — " atau "SS4-KK.KP.3.1: "
+    s = s.replace(/^SS\d+-[A-Za-z0-9_.]+\s*[—:\-]\s*/i, "");
+    // Hilangkan prefiks penomoran struktural teknis berulang
+    let prev = "";
+    while (prev !== s) {
+      prev = s;
+      s = s.replace(/^(?:SS\d+\.|P\d+\.|\d+(?:\.[a-zA-Z0-9]+)*\.?|\([0-9a-zA-Z]+\)|[a-zA-Z]\.)\s+/, "").trim();
+    }
+    // Hilangkan sufiks bobot persentase jika ada, contoh: "(Bobot 15%)" atau "(Bobot 5%)"
+    s = s.replace(/\s*\(\s*Bobot\s*\d+%\s*\)/gi, "").trim();
+    return s;
+  }
+  window.RB_UTILS = Object.assign(window.RB_UTILS || {}, { cleanLabel });
+
+  // Konfigurasi Tunggal Struktur Indeks Sasaran 4 (Sesuai Struktur Asli Excel)
+  const SASARAN4_CONFIG = {
+    KK: {
+      name: "Kapabilitas Kelembagaan (KK)",
+      aspekLabel: "Aspek",
+      getAspek: d => d.aspek,
+      indikatorLabel: "Indikator",
+      getIndikator: d => d.indikator,
+      jenisButir: "Pernyataan",
+      getNamaButir: d => d.pernyataan,
+      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+    },
+    IPPN: {
+      name: "Indeks Perencanaan Pembangunan Nasional (IPPN)",
+      aspekLabel: "",
+      getAspek: () => "",
+      indikatorLabel: "Indikator",
+      getIndikator: d => d.indikator,
+      jenisButir: "Sub-Indikator",
+      getNamaButir: d => d.sub_indikator,
+      getPenjelasanHtml: (d, esc) => {
+        let html = "";
+        if (d.isi_penjelasan && d.isi_penjelasan !== "-") {
+          html += `<div class="rincian-isi-penjelasan">${esc(d.isi_penjelasan)}</div>`;
+        }
+        if (d.status_penilaian && d.status_penilaian !== "-") {
+          html += `<div class="rincian-status-tag"><span class="status-tag-label">Status Penilaian:</span> <span class="status-tag-val">${esc(d.status_penilaian)}</span></div>`;
+        }
+        return html;
+      }
+    },
+    CKKP: {
+      name: "Capaian Kontribusi Kinerja Pembangunan (CKKP)",
+      aspekLabel: "Kelompok Penilaian",
+      getAspek: d => d.kelompok_penilaian || d.kelompok_indikator,
+      indikatorLabel: "Indikator",
+      getIndikator: d => d.indikator,
+      jenisButir: "Komponen Penilaian",
+      getNamaButir: d => d.komponen_penilaian || d.butir_penilaian,
+      getPenjelasanHtml: (d, esc) => {
+        const u = d.uraian_cakupan || d.hasil_penilaian;
+        return u && u !== "-" ? `<div class="rincian-isi-penjelasan">${esc(u)}</div>` : "";
+      }
+    },
+    SPIP: {
+      name: "Sistem Pengendalian Intern Pemerintah (SPIP)",
+      aspekLabel: "Komponen",
+      getAspek: d => d.komponen,
+      indikatorLabel: "Indikator",
+      getIndikator: d => d.unsur,
+      jenisButir: "Sub Uraian",
+      getNamaButir: d => d.sub_uraian,
+      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+    },
+    SAKIP: {
+      name: "Sistem Akuntabilitas Kinerja Instansi Pemerintah (SAKIP)",
+      aspekLabel: "Komponen",
+      getAspek: d => d.komponen,
+      indikatorLabel: "",
+      getIndikator: () => "",
+      jenisButir: "Sub-Komponen",
+      getNamaButir: d => d.sub_komponen,
+      getPenjelasanHtml: (d, esc) => {
+        const list = Array.isArray(d.kriteria_evaluasi) ? d.kriteria_evaluasi : [];
+        if (list.length === 0) return "";
+        return `
+          <div class="rincian-kriteria-block">
+            <span class="rincian-kriteria-header">Kriteria Evaluasi:</span>
+            <ul class="rincian-kriteria-list">
+              ${list.map(k => `<li>${esc(cleanLabel(k))}</li>`).join("")}
+            </ul>
+          </div>
+        `;
+      }
+    },
+    ELPPD: {
+      name: "Evaluasi Laporan Penyelenggaraan Pemerintahan Daerah (ELPPD)",
+      aspekLabel: "Kelompok Penilaian",
+      getAspek: d => d.kelompok_penilaian || d.aspek,
+      indikatorLabel: "Indikator",
+      getIndikator: d => (d.indikator && d.indikator !== d.butir_penilaian && d.indikator.length < 80) ? d.indikator : "",
+      jenisButir: "Butir Penilaian",
+      getNamaButir: d => d.butir_penilaian || d.indikator,
+      getPenjelasanHtml: (d, esc) => {
+        const m = d.kinerja_makro && d.kinerja_makro !== "-" ? d.kinerja_makro : "";
+        const u = d.kinerja_urusan && d.kinerja_urusan !== "-" ? d.kinerja_urusan : "";
+        if (!m && !u) return "";
+        return `
+          <div class="rincian-elppd-block">
+            ${m ? `<div class="elppd-dim-item"><span class="elppd-dim-label">Kinerja Makro:</span><div class="elppd-dim-val">${esc(m)}</div></div>` : ""}
+            ${u ? `<div class="elppd-dim-item"><span class="elppd-dim-label">Kinerja Penyelenggaraan Urusan Pemerintahan:</span><div class="elppd-dim-val">${esc(u)}</div></div>` : ""}
+          </div>
+        `;
+      }
+    },
+    IKPA: {
+      name: "Indikator Kinerja Pelaksanaan Anggaran (IKPA)",
+      aspekLabel: "Aspek",
+      getAspek: d => d.aspek,
+      indikatorLabel: "Indikator",
+      getIndikator: d => d.indikator,
+      jenisButir: "Pernyataan",
+      getNamaButir: d => d.pernyataan,
+      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+    },
+    IPA: {
+      name: "Indeks Pengelolaan Aset (IPA)",
+      aspekLabel: "Sasaran Strategis",
+      getAspek: d => d.sasaran_strategis,
+      indikatorLabel: "Parameter",
+      getIndikator: d => d.parameter,
+      jenisButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? "Sub-Parameter" : "Parameter",
+      getNamaButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? d.sub_parameter : d.parameter,
+      getPenjelasanHtml: (d, esc) => d.isi_penjelasan && d.isi_penjelasan !== "-" ? `<div class="rincian-isi-penjelasan">${esc(d.isi_penjelasan)}</div>` : ""
+    }
+  };
+
+  // Konfigurasi Standar Struktur Seluruh Indeks (Mendukung Sasaran 1 PEMDI dan Seluruh Sasaran Mitra)
+  const INSTRUMENT_CONFIG = {
+    // === SASARAN 1 (Pemerintah Digital) ===
+    PEMDI: {
+      name: "Pemerintah Digital (PEMDI)",
+      aspekLabel: "Domain / Aspek",
+      getAspek: d => (d && d.aspek) ? cleanLabel(d.aspek) : "Data",
+      indikatorLabel: "Indikator SPBE",
+      getIndikator: d => (d && d.indikator) ? cleanLabel(d.indikator) : "",
+      jenisButir: "Kriteria Penilaian",
+      getNamaButir: d => {
+        if (!d) return "";
+        return cleanLabel(d.subindikator || d.sub_indikator || d.description || "");
+      },
+      getPenjelasanHtml: (d, esc) => {
+        let html = "";
+        if (d && d.pembina && d.pembina !== "-" && d.pembina.trim() !== "") {
+          html += `<div class="rincian-status-tag"><span class="status-tag-label">Instansi Pengampu:</span> <span class="status-tag-val">${esc(cleanLabel(d.pembina))}</span></div>`;
+        }
+        return html;
+      }
+    },
+
+    // === SASARAN 2 (Sistem Merit) ===
+    SM: {
+      name: "Sistem Merit (SM)",
+      aspekLabel: "Aspek Sistem Merit",
+      getAspek: d => cleanLabel((d && d.aspek) || "Digitalisasi Manajemen ASN"),
+      indikatorLabel: "Indikator",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Sub-Indikator",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: (d, esc) => {
+        let html = "";
+        if (d && d.pembina && d.pembina !== "-" && d.pembina.trim() !== "") {
+          html += `<div class="rincian-status-tag"><span class="status-tag-label">Instansi Pembina:</span> <span class="status-tag-val">${esc(cleanLabel(d.pembina))}</span></div>`;
+        }
+        return html;
+      }
+    },
+
+    // === SASARAN 3 (Integritas & Inovasi) ===
+    DIIIP: {
+      name: "Desain Indeks Inovasi Instansi Pemerintah (DIIIP)",
+      aspekLabel: "Dimensi Inovasi",
+      getAspek: d => cleanLabel((d && (d.aspek || d.dimensi)) || ""),
+      indikatorLabel: "Indikator Inovasi",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Sub-Indikator",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: () => ""
+    },
+    IIIP: {
+      name: "Survei Indeks Inovasi Instansi Pemerintah (IIIP)",
+      aspekLabel: "Blok Survei",
+      getAspek: d => cleanLabel((d && (d.aspek || d.blok)) || ""),
+      indikatorLabel: "Indikator Survei",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Pertanyaan Survei",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.pertanyaan)) || ""),
+      getPenjelasanHtml: () => ""
+    },
+
+    // === SASARAN 4 (Kapabilitas Kelembagaan & Pembanding) ===
+    KK: SASARAN4_CONFIG.KK,
+    IPPN: SASARAN4_CONFIG.IPPN,
+    CKKP: SASARAN4_CONFIG.CKKP,
+    SPIP: SASARAN4_CONFIG.SPIP,
+    SAKIP: SASARAN4_CONFIG.SAKIP,
+    ELPPD: SASARAN4_CONFIG.ELPPD,
+    IKPA: SASARAN4_CONFIG.IKPA,
+    IPA: SASARAN4_CONFIG.IPA,
+
+    // === SASARAN 5 (Pelayanan Publik) ===
+    IPP: {
+      name: "Indeks Pelayanan Publik (IPP)",
+      aspekLabel: "Aspek Pelayanan",
+      getAspek: d => cleanLabel((d && d.aspek) || ""),
+      indikatorLabel: "Indikator Pelayanan",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Parameter Penilaian",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: () => ""
+    },
+    OP: {
+      name: "Opini Pengawasan Pelayanan Publik (Ombudsman)",
+      aspekLabel: "Dimensi Penilaian",
+      getAspek: d => cleanLabel((d && (d.aspek || d.dimensi)) || ""),
+      indikatorLabel: "Variabel Penilaian",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Indikator Kepatuhan",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: () => ""
+    },
+    IKK: {
+      name: "Indeks Kualitas Kebijakan (IKK)",
+      aspekLabel: "Dimensi Kebijakan",
+      getAspek: d => cleanLabel((d && d.aspek) || ""),
+      indikatorLabel: "Indikator Kebijakan",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Pertanyaan Evaluasi",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: () => ""
+    },
+    ZI: {
+      name: "Zona Integritas (ZI)",
+      aspekLabel: "Komponen Pengungkit / Hasil",
+      getAspek: d => cleanLabel((d && d.aspek) || ""),
+      indikatorLabel: "Program / Sub-Komponen",
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Kriteria Penilaian",
+      getNamaButir: d => cleanLabel((d && (d.subindikator || d.sub_indikator || d.indikator)) || ""),
+      getPenjelasanHtml: () => ""
+    }
+  };
 
   // Nama resmi instrumen untuk tooltip & label
   const instLabels = {
@@ -509,6 +759,8 @@
           codes: [[r.target, r.source]],
           sourceCode: r.target,
           destCode: r.source,
+          sourceData: subPemdi,
+          destData: subExt,
           sourceQuestion: pemdiDesc,
           destQuestion: extDesc,
           reason: meta.alasan || (pemdiDesc && extDesc ? `"${pemdiDesc}" berkaitan dengan "${extDesc}".` : "Keterkaitan operasional antar-indikator sasaran strategis."),
@@ -548,24 +800,37 @@
         const srcSasaranName = "Sasaran 4 — Kapabilitas Kelembagaan";
         const dstSasaranName = "Sasaran 4 — Kapabilitas Kelembagaan";
 
-        const srcInstName = "Kapabilitas Kelembagaan (KK)";
-        const dstInstName = (subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dstInst);
+        const srcCfg = SASARAN4_CONFIG["KK"];
+        const dstCfg = SASARAN4_CONFIG[dstInst];
 
-        const srcAspek = (subSrc && subSrc.aspek) ? subSrc.aspek : "Ketepatan Fungsi";
-        const dstAspek = (subDst && subDst.aspek) ? subDst.aspek : "";
+        const srcInstName = srcCfg ? srcCfg.name : "Kapabilitas Kelembagaan (KK)";
+        const dstInstName = dstCfg ? dstCfg.name : ((subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dstInst));
 
-        const srcIndikator = (subSrc && subSrc.indikator) ? subSrc.indikator : srcGroup;
-        const dstIndikator = (subDst && subDst.indikator) ? subDst.indikator : dstLabel.replace(/^SS4-[^—]+—\s*/, "");
+        const srcAspek = (srcCfg && subSrc) ? srcCfg.getAspek(subSrc) : ((subSrc && subSrc.aspek) ? subSrc.aspek : "Ketepatan Fungsi");
+        const dstAspek = (dstCfg && subDst) ? dstCfg.getAspek(subDst) : ((subDst && subDst.aspek) ? subDst.aspek : "");
 
-        const srcSubindikator = (subSrc && subSrc.subindikator) ? subSrc.subindikator : "";
-        const dstSubindikator = (subDst && subDst.subindikator) ? subDst.subindikator : "";
+        const rawSrcIndikator = (srcCfg && subSrc) ? srcCfg.getIndikator(subSrc) : (subSrc && subSrc.indikator ? subSrc.indikator : srcGroup);
+        let rawDstIndikator = "";
+        if (dstCfg && subDst) {
+          rawDstIndikator = dstCfg.getIndikator(subDst) || dstCfg.getNamaButir(subDst);
+        } else if (subDst) {
+          rawDstIndikator = subDst.indikator || subDst.komponen || dstLabel.replace(/^SS4-[^—]+—\s*/, "");
+        } else {
+          rawDstIndikator = dstLabel.replace(/^SS4-[^—]+—\s*/, "");
+        }
+
+        const cleanSrcInd = cleanLabel(rawSrcIndikator);
+        const cleanDstInd = cleanLabel(rawDstIndikator);
+
+        const srcSubindikator = (srcCfg && subSrc) ? cleanLabel(srcCfg.getNamaButir(subSrc)) : "";
+        const dstSubindikator = (dstCfg && subDst) ? cleanLabel(dstCfg.getNamaButir(subDst)) : "";
 
         const metaS4 = (jk && typeof jk.classifySasaran4 === "function")
-          ? jk.classifySasaran4(srcGroup, dstInst, dstGroup, r.source, r.target, srcIndikator, dstIndikator)
+          ? jk.classifySasaran4(srcGroup, dstInst, dstGroup, r.source, r.target, cleanSrcInd, cleanDstInd)
           : {
               jenis: "Mendukung",
-              status: null,
-              alasan: `"${srcIndikator}" berkaitan dengan "${dstIndikator}".`
+              status: "Perlu Validasi",
+              alasan: `"${cleanSrcInd}" berkaitan dengan "${cleanDstInd}".`
             };
 
         if (state.rtype && metaS4.jenis !== state.rtype) continue;
@@ -580,26 +845,28 @@
           sourceInst: "KK",
           sourceInstName: srcInstName,
           source: srcGroup,
-          sourceName: srcIndikator,
+          sourceName: cleanSrcInd,
           sourceAspek: srcAspek,
-          sourceIndikator: srcIndikator,
+          sourceIndikator: cleanSrcInd,
           sourceSubindikator: srcSubindikator,
           destInst: dstInst,
           destInstName: dstInstName,
           dest: r.target,
-          destName: dstIndikator,
+          destName: cleanDstInd,
           destAspek: dstAspek,
-          destIndikator: dstIndikator,
+          destIndikator: cleanDstInd,
           destSubindikator: dstSubindikator,
           type: metaS4.jenis,
-          level: "Tervalidasi Substantif",
+          level: "Perlu Validasi",
           tingkat: null,
           codes: [[r.source, r.target]],
           sourceCode: r.source,
           destCode: r.target,
+          sourceData: subSrc,
+          destData: subDst,
           sourceQuestion: srcLabel,
           destQuestion: dstLabel,
-          reason: metaS4.alasan || `"${srcIndikator}" berkaitan dengan "${dstIndikator}".`,
+          reason: metaS4.alasan || `"${cleanSrcInd}" berkaitan dengan "${cleanDstInd}".`,
           refs: [`Sel: ${r.sourceCell}; Kolom: ${r.relationColumn}`]
         });
       }
@@ -678,6 +945,8 @@
             codes: [[src.code, dst.code]],
             sourceCode: src.code,
             destCode: dst.code,
+            sourceData: subSrc,
+            destData: subDst,
             sourceQuestion: src.question,
             destQuestion: dst.question,
             reason: metaS5.alasan || (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : (src.question ? `"${src.question}"` : (dst.question ? `"${dst.question}"` : `Keterkaitan substantif antara ${src.group} dan ${dst.group}.`))),
@@ -765,6 +1034,8 @@
           codes: [[srcCode, dstCode]],
           sourceCode: srcCode,
           destCode: dstCode,
+          sourceData: subSrc,
+          destData: subDst,
           sourceQuestion: srcName,
           destQuestion: dstName,
           reason: r.alasan || `Indikator "${srcName}" berkaitan dengan "${dstName}".`,
@@ -2018,7 +2289,7 @@
               <span class="card-inst-tag">${esc(sourceTag)} · ${sasaranLabel}</span>
               <span class="card-rel-count">${src.totalItems} ${isS3 ? "pertanyaan terkait" : `rujukan kode (${src.destPairs.length} tujuan)`}</span>
             </div>
-            <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(src.name)}</div>
+            <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(cleanLabel(src.name))}</div>
             <div style="font-size:11px; color:#64748b; margin-top:6px;">
               ${isS3 && state.s3Compact ? "Indikator terpilih · pilih indikator lain melalui daftar di atas" : (isSelected ? "✓ Sedang difokuskan (klik lagi untuk lepas)" : "Arahkan kursor / klik untuk fokus →")}
             </div>
@@ -2064,7 +2335,7 @@
               <span class="card-inst-tag" style="color:#059669;">${esc(destTag)} · ${dstSasaranLabel}</span>
               <span class="card-rel-count">${dst.totalItems} ${isS3 && dst.inst === "IIIP" ? "relasi" : "rujukan kode"}</span>
             </div>
-            <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(dst.name)}</div>
+            <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(cleanLabel(dst.name))}</div>
             <div style="font-size:11px; color:#64748b; margin-top:6px;">Arahkan kursor untuk sorot · Klik rincian di Tahap 3 →</div>
           </div>
         `;
@@ -2270,6 +2541,140 @@
     return `<span class="badge ${cls}">Tingkat: ${esc(tingkat)}</span>`;
   }
 
+  // Render Kolom Penyandingan Indikator (Dinamis Berdasarkan Struktur Asli Indeks)
+  function renderCompareColumn(side, r) {
+    const isSource = side === "source";
+    const sideClass = isSource ? "compare-col-source" : "compare-col-dest";
+    const badgeText = isSource ? "Indikator Sumber" : "Indikator Pembanding";
+    const sasaranName = isSource ? r.sourceSasaranName : r.destSasaranName;
+    const instCode = isSource ? r.sourceInst : r.destInst;
+    const instFullName = isSource ? r.sourceInstName : r.destInstName;
+    const itemCode = isSource ? r.sourceCode : r.destCode;
+    const subData = (isSource ? r.sourceData : r.destData) || getSubstansi(itemCode);
+
+    // Konfigurasi dinamis instrumen (Mendukung Sasaran 1 PEMDI, Sasaran 4, dan seluruh sasaran mitra)
+    const s4Config = (typeof INSTRUMENT_CONFIG !== "undefined" && INSTRUMENT_CONFIG[instCode]) || (typeof SASARAN4_CONFIG !== "undefined" && SASARAN4_CONFIG[instCode]) || null;
+
+    let itemsHtml = `
+      <div class="compare-info-item">
+        <span class="info-label">Sasaran Strategis</span>
+        <div class="info-val info-sasaran">${esc(sasaranName)}</div>
+      </div>
+      <div class="compare-info-item">
+        <span class="info-label">${isSource ? "Indeks Sumber" : "Indeks Pembanding"}</span>
+        <div class="info-val info-indeks">${esc(s4Config ? s4Config.name : (instFullName || instName(instCode)))}</div>
+      </div>
+    `;
+
+    if (s4Config && subData) {
+      // 1. Aspek / Komponen (apabila tersedia)
+      const rawAspek = s4Config.getAspek ? s4Config.getAspek(subData) : "";
+      if (rawAspek && rawAspek !== "-" && rawAspek !== " - " && String(rawAspek).trim() !== "") {
+        const displayAspek = cleanLabel(String(rawAspek).trim());
+        itemsHtml += `
+          <div class="compare-info-item">
+            <span class="info-label">${esc(s4Config.aspekLabel || "Aspek / Komponen")}</span>
+            <div class="info-val info-aspek">${esc(displayAspek)}</div>
+          </div>
+        `;
+      }
+
+      // 2. Indikator (apabila tersedia sebagai kategori tersendiri)
+      const rawIndikator = s4Config.getIndikator ? s4Config.getIndikator(subData) : "";
+      if (rawIndikator && rawIndikator !== "-" && String(rawIndikator).trim() !== "") {
+        const displayIndikator = cleanLabel(String(rawIndikator).trim());
+        itemsHtml += `
+          <div class="compare-info-item">
+            <span class="info-label">${esc(s4Config.indikatorLabel || "Indikator")}</span>
+            <div class="info-val info-indikator">${esc(displayIndikator)}</div>
+          </div>
+        `;
+      }
+
+      // 3. Rincian Indikator (Jenis Butir -> Nama Butir -> Isi Penjelasan)
+      const jenisButir = typeof s4Config.jenisButir === "function" ? s4Config.jenisButir(subData) : s4Config.jenisButir;
+      const rawNamaButir = s4Config.getNamaButir ? s4Config.getNamaButir(subData) : "";
+      const namaButir = cleanLabel(String(rawNamaButir || "").trim());
+      const isiPenjelasanHtml = s4Config.getPenjelasanHtml ? s4Config.getPenjelasanHtml(subData, esc) : "";
+
+      if (namaButir || isiPenjelasanHtml) {
+        itemsHtml += `
+          <div class="compare-info-item compare-rincian-section">
+            <span class="info-label info-rincian-header">Rincian Indikator</span>
+            <div class="rincian-box-wrapper">
+              ${jenisButir ? `<span class="rincian-jenis-badge">${esc(jenisButir.toUpperCase())}</span>` : ""}
+              ${namaButir ? `<div class="rincian-nama-butir">${esc(namaButir)}</div>` : ""}
+              ${isiPenjelasanHtml}
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      // Fallback untuk Sasaran 1, 2, 3, 5 atau jika metadata belum terdefinisi
+      const aspek = isSource ? r.sourceAspek : r.destAspek;
+      const rawIndikator = isSource ? r.sourceIndikator : r.destIndikator;
+      const subind = isSource ? r.sourceSubindikator : r.destSubindikator;
+
+      if (aspek && aspek !== "-" && aspek.trim() !== "") {
+        itemsHtml += `
+          <div class="compare-info-item">
+            <span class="info-label">Aspek / Komponen</span>
+            <div class="info-val info-aspek">${esc(cleanLabel(aspek))}</div>
+          </div>
+        `;
+      }
+      if (rawIndikator && rawIndikator.trim() !== "") {
+        itemsHtml += `
+          <div class="compare-info-item">
+            <span class="info-label">Indikator</span>
+            <div class="info-val info-indikator">${esc(cleanLabel(rawIndikator))}</div>
+          </div>
+        `;
+      }
+
+      let rincianFallbackHtml = "";
+      if (subind && subind !== "-" && subind.trim() !== "") {
+        rincianFallbackHtml += `
+          <div class="rincian-item">
+            <span class="rincian-item-label">Subindikator / Rincian</span>
+            <div class="rincian-item-val">${esc(cleanLabel(subind))}</div>
+          </div>
+        `;
+      }
+      if (subData && subData.definisi_operasional && subData.definisi_operasional.trim() !== "" && subData.definisi_operasional !== "-") {
+        rincianFallbackHtml += `
+          <div class="rincian-item">
+            <span class="rincian-item-label">Definisi Operasional</span>
+            <div class="rincian-item-val rincian-item-defop">${esc(subData.definisi_operasional.trim())}</div>
+          </div>
+        `;
+      }
+
+      if (rincianFallbackHtml.trim() !== "") {
+        itemsHtml += `
+          <div class="compare-info-item compare-rincian-section">
+            <span class="info-label info-rincian-header">Rincian Indikator</span>
+            <div class="rincian-box-wrapper">
+              ${rincianFallbackHtml}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    return `
+      <div class="compare-col ${sideClass}">
+        <div class="compare-col-header">
+          <span class="compare-col-badge">${esc(badgeText)}</span>
+          <span class="compare-col-sasaran">${esc(sasaranName)}</span>
+        </div>
+        <div class="compare-info-list">
+          ${itemsHtml}
+        </div>
+      </div>
+    `;
+  }
+
   // Render Kartu Penyandingan Dua Kolom (Executive Detail View)
   function renderFocusRelationCard(r) {
     if (!dom.focusRelationCard) return;
@@ -2279,9 +2684,11 @@
       return;
     }
 
+    const srcTitle = cleanLabel(r.sourceIndikator || r.sourceName || r.source);
+    const dstTitle = cleanLabel(r.destIndikator || r.destName || r.dest);
     const titleText = (r.sourceInstName && r.destInstName && r.sourceInstName !== r.destInstName)
       ? `${r.sourceInstName} ⟷ ${r.destInstName}`
-      : `${r.sourceName || r.sourceIndikator} ⟷ ${r.destName || r.destIndikator}`;
+      : `${srcTitle} ⟷ ${dstTitle}`;
 
     dom.focusRelationCard.classList.remove("hidden");
     dom.focusRelationCard.innerHTML = `
@@ -2297,75 +2704,8 @@
         </div>
 
         <div class="compare-columns-grid">
-          <!-- Kolom Kiri: Indikator Sumber -->
-          <div class="compare-col compare-col-source">
-            <div class="compare-col-header">
-              <span class="compare-col-badge">Indikator Sumber</span>
-              <span class="compare-col-sasaran">${esc(r.sourceSasaranName)}</span>
-            </div>
-            <div class="compare-info-list">
-              <div class="compare-info-item">
-                <span class="info-label">Sasaran Strategis</span>
-                <div class="info-val info-sasaran">${esc(r.sourceSasaranName)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Indeks Sumber</span>
-                <div class="info-val info-indeks">${esc(r.sourceInstName)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Aspek</span>
-                <div class="info-val info-aspek">${esc(r.sourceAspek || "-")}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Indikator</span>
-                <div class="info-val info-indikator">${esc(r.sourceIndikator)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">ID Pelacakan Data</span>
-                <div class="info-val info-code" style="font-family:monospace; font-size:11px; color:#475569; font-weight:600;">${esc(r.sourceCode || "-")}</div>
-              </div>
-              ${r.sourceSubindikator ? `
-              <div class="compare-info-item">
-                <span class="info-label">Subindikator / Kondisi</span>
-                <div class="info-val info-subindikator">${esc(r.sourceSubindikator)}</div>
-              </div>` : ""}
-            </div>
-          </div>
-
-          <!-- Kolom Kanan: Indikator Pembanding -->
-          <div class="compare-col compare-col-dest">
-            <div class="compare-col-header">
-              <span class="compare-col-badge">Indikator Pembanding</span>
-              <span class="compare-col-sasaran">${esc(r.destSasaranName)}</span>
-            </div>
-            <div class="compare-info-list">
-              <div class="compare-info-item">
-                <span class="info-label">Sasaran Strategis Tujuan</span>
-                <div class="info-val info-sasaran">${esc(r.destSasaranName)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Indeks Pembanding</span>
-                <div class="info-val info-indeks">${esc(r.destInstName)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Aspek</span>
-                <div class="info-val info-aspek">${esc(r.destAspek || "-")}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">Indikator</span>
-                <div class="info-val info-indikator">${esc(r.destIndikator)}</div>
-              </div>
-              <div class="compare-info-item">
-                <span class="info-label">ID Pelacakan Data</span>
-                <div class="info-val info-code" style="font-family:monospace; font-size:11px; color:#475569; font-weight:600;">${esc(r.destCode || "-")}</div>
-              </div>
-              ${r.destSubindikator ? `
-              <div class="compare-info-item">
-                <span class="info-label">Subindikator / Kondisi</span>
-                <div class="info-val info-subindikator">${esc(r.destSubindikator)}</div>
-              </div>` : ""}
-            </div>
-          </div>
+          ${renderCompareColumn("source", r)}
+          ${renderCompareColumn("dest", r)}
         </div>
 
         <!-- Informasi Keterkaitan & Alasan (Menyatu dalam 1 Card di Bawah Kolom) -->
@@ -2374,7 +2714,7 @@
             <div class="keterkaitan-badges-group">
               <span class="keterkaitan-label">Informasi Keterkaitan:</span>
               ${renderTypeBadge(r.type)}
-              <span class="badge badge-status">${esc(r.level || "Tervalidasi Substantif")}</span>
+              ${(Number(r.sourceSasaran) === 4 || Number(r.targetSasaran) === 4 || Number(r.sourceSasaran) === 1 || state.activeMenu === "external") ? "" : (r.level ? `<span class="badge badge-status">${esc(r.level)}</span>` : "")}
               ${r.tingkat ? renderTingkatBadge(r.tingkat) : ""}
             </div>
           </div>
@@ -2409,7 +2749,7 @@
       const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc));
       if (activePair) {
         itemsToDisplay = activePair.items;
-        dom.listTitle.textContent = `Detail Relasi: ${activePair.sourceName} → ${activePair.destName}`;
+        dom.listTitle.textContent = `Detail Relasi: ${cleanLabel(activePair.sourceName)} → ${cleanLabel(activePair.destName)}`;
         dom.listDesc.textContent = `${itemsToDisplay.length} catatan keterkaitan pada pasangan indikator ini. Menampilkan keterangan substantif dan jenis keterkaitan.`;
       } else {
         itemsToDisplay = allFiltered;
@@ -2423,10 +2763,11 @@
       );
       if (matchedPairs.length > 0) {
         itemsToDisplay = matchedPairs.flatMap(p => p.items);
-        const srcLabel = state.activeMenu === "internal" && Number(state.internalSasaranId) === 3
+        const rawSrc = state.activeMenu === "internal" && Number(state.internalSasaranId) === 3
           ? (matchedPairs[0]?.sourceName || "Indikator Terpilih")
           : (state.chosenSrc || (matchedPairs[0] ? matchedPairs[0].sourceName : "Indikator Terpilih"));
-        const dstLabel = state.chosenInst ? instName(state.chosenInst) : (matchedPairs[0] ? instName(matchedPairs[0].destInst) : "Indeks Pembanding");
+        const srcLabel = cleanLabel(rawSrc);
+        const dstLabel = state.chosenInst ? instName(state.chosenInst) : (matchedPairs[0] ? cleanLabel(matchedPairs[0].destName) : "Indeks Pembanding");
         dom.listTitle.textContent = `Detail Relasi: ${srcLabel} → ${dstLabel}`;
         dom.listDesc.textContent = `${itemsToDisplay.length} catatan keterkaitan antara ${srcLabel} dengan ${dstLabel}. Menampilkan keterangan substantif dan jenis keterkaitan.`;
       } else {
@@ -2493,8 +2834,8 @@
           <td style="font-weight:700; color:#64748b; text-align:center;">${i + 1}</td>
           <td>
             <div class="table-cell-substance">
-              <div class="cell-main-title">${esc(r.sourceIndikator)}</div>
-              ${r.sourceAspek ? `<div class="cell-aspek-text">Aspek: ${esc(r.sourceAspek)}</div>` : ""}
+              <div class="cell-main-title">${esc(cleanLabel(r.sourceIndikator))}</div>
+              ${r.sourceAspek ? `<div class="cell-aspek-text">Aspek: ${esc(cleanLabel(r.sourceAspek))}</div>` : ""}
               <div class="cell-sub-pills">
                 <span class="cell-pill">${esc(r.sourceInstName)}</span>
                 <span class="cell-pill-sasaran">${esc(r.sourceSasaranName)}</span>
@@ -2503,8 +2844,8 @@
           </td>
           <td>
             <div class="table-cell-substance">
-              <div class="cell-main-title">${esc(r.destIndikator)}</div>
-              ${r.destAspek ? `<div class="cell-aspek-text">Aspek: ${esc(r.destAspek)}</div>` : ""}
+              <div class="cell-main-title">${esc(cleanLabel(r.destIndikator))}</div>
+              ${r.destAspek ? `<div class="cell-aspek-text">Aspek: ${esc(cleanLabel(r.destAspek))}</div>` : ""}
               <div class="cell-sub-pills">
                 <span class="cell-pill">${esc(r.destInstName)}</span>
                 <span class="cell-pill-sasaran">${esc(r.destSasaranName)}</span>
@@ -2514,7 +2855,7 @@
           <td>
             <div class="table-cell-type-col">
               ${renderTypeBadge(r.type)}
-              ${renderStatusBadge(r.level)}
+              ${(Number(r.sourceSasaran) === 4 || Number(r.targetSasaran) === 4 || Number(r.sourceSasaran) === 1 || state.activeMenu === "external") ? "" : renderStatusBadge(r.level)}
               ${r.tingkat ? renderTingkatBadge(r.tingkat) : ""}
             </div>
           </td>

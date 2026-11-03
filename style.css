@@ -1651,15 +1651,261 @@ html, body {
   line-height: 1.45;
 }
 
-.info-subindikator {
-  font-size: 12.5px;
-  color: #475569;
-  background: #f1f5f9;
-  padding: 8px 12px;
+.info-subindikator,
+.info-sub-item {
+  font-size: 13px;
+  color: #334155;
+  background: #f8fafc;
+  padding: 9px 12px;
   border-radius: 6px;
+  border: 1px solid #e2e8f0;
   border-left: 3px solid #94a3b8;
-  line-height: 1.4;
+  line-height: 1.45;
+  white-space: pre-line;
+  word-break: break-word;
 }
+
+.info-label-def-op {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-definisi-operasional {
+  font-size: 13px;
+  color: #0f172a;
+  background: #f0f9ff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0284c7;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+/* Rincian Indikator Terstruktur */
+.compare-rincian-section {
+  margin-top: 4px;
+}
+
+.info-rincian-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rincian-box-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.rincian-jenis-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #475569;
+  background: #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+
+.compare-col-source .rincian-jenis-badge {
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+}
+
+.compare-col-dest .rincian-jenis-badge {
+  color: #047857;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+}
+
+.rincian-nama-butir {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.45;
+}
+
+.rincian-isi-penjelasan {
+  font-size: 12.5px;
+  color: #334155;
+  line-height: 1.55;
+  background: #ffffff;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #64748b;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.compare-col-source .rincian-isi-penjelasan {
+  border-left-color: #0284c7;
+  background: #f0f9ff;
+}
+
+.compare-col-dest .rincian-isi-penjelasan {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+}
+
+.rincian-kriteria-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid #10b981;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.rincian-kriteria-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #065f46;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.rincian-kriteria-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #1e293b;
+  line-height: 1.55;
+}
+
+.rincian-kriteria-list li {
+  margin-bottom: 4px;
+}
+
+.rincian-kriteria-list li:last-child {
+  margin-bottom: 0;
+}
+
+.rincian-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #475569;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.status-tag-label {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.status-tag-val {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rincian-elppd-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid #10b981;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.elppd-dim-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.elppd-dim-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #065f46;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.elppd-dim-val {
+  font-size: 12px;
+  color: #1e293b;
+  line-height: 1.45;
+}
+
+.badge-status-perlu {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.badge-status-usulan {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.rincian-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rincian-item:not(:last-child) {
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.rincian-item-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.rincian-item-val {
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.rincian-item-defop {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 3px solid #0284c7;
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: #0f172a;
+  font-style: normal;
+}
+
 
 /* Informasi Keterkaitan & Alasan (Menyatu dalam 1 card di bawah kolom komparasi) */
 .compare-keterkaitan-unified,
