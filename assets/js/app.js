@@ -690,52 +690,52 @@
 
     const sId = Number(state.internalSasaranId);
     if (sId === 4) {
-      const s4Aspects = [
-        {
-          id: "Ketepatan Fungsi",
-          name: "Ketepatan Fungsi",
-          inst: "KK",
-          indikatorCount: 7,
-          groups: [
-            "1. Mandat (Core Function)",
-            "2. Distribusi Kewenangan",
-            "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung"
-          ]
-        },
-        {
-          id: "Ketepatan Ukuran",
-          name: "Ketepatan Ukuran",
-          inst: "KK",
-          indikatorCount: 5,
-          groups: [
-            "1. Rentang Kendali",
-            "2. Departemensi (Pembidangan)"
-          ]
-        },
-        {
-          id: "Ketepatan Proses",
-          name: "Ketepatan Proses",
-          inst: "KK",
-          indikatorCount: 7,
-          groups: [
-            "1. Proses Bisnis",
-            "2. Proses Pengambilan Keputusan",
-            "3. Proses Perencanaan"
-          ]
-        },
-        {
-          id: "Tata Kelola",
-          name: "Tata Kelola",
-          inst: "KK",
-          indikatorCount: 5,
-          groups: [
-            "1. Sistem Kerja",
-            "2. Budaya Kerja",
-            "3. Pengendalian Risiko"
-          ]
+      // Hitung aspek, indikator, dan kelompok KK secara dinamis dari relasi Sasaran 4
+      const s4Rels = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4);
+      const aspectMap = new Map();
+      const standardOrder = ["Ketepatan Fungsi", "Ketepatan Ukuran", "Ketepatan Proses", "Tata Kelola"];
+
+      for (const r of s4Rels) {
+        const sub = getSubstansi(r.source);
+        const aspName = (sub && sub.aspek) ? sub.aspek : getKKAspect(r.source);
+        const grpName = (sub && sub.indikator) ? sub.indikator : getKKGroup(r.source);
+
+        if (!aspectMap.has(aspName)) {
+          aspectMap.set(aspName, {
+            id: aspName,
+            name: aspName,
+            inst: "KK",
+            indicators: new Set(),
+            groups: new Set()
+          });
         }
-      ];
-      return s4Aspects;
+        const aspObj = aspectMap.get(aspName);
+        aspObj.indicators.add(r.source);
+        if (grpName) aspObj.groups.add(grpName);
+      }
+
+      if (aspectMap.size === 0) {
+        standardOrder.forEach(name => {
+          aspectMap.set(name, { id: name, name, inst: "KK", indicators: new Set(), groups: new Set() });
+        });
+      }
+
+      const sortedAspects = [...aspectMap.values()].sort((a, b) => {
+        const idxA = standardOrder.indexOf(a.name);
+        const idxB = standardOrder.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name, "id");
+      });
+
+      return sortedAspects.map(a => ({
+        id: a.id,
+        name: a.name,
+        inst: a.inst,
+        indikatorCount: a.indicators.size || (a.name.includes("Ukuran") || a.name.includes("Kelola") ? 5 : 7),
+        groups: [...a.groups].sort((g1, g2) => g1.localeCompare(g2, "id", { numeric: true }))
+      }));
     }
     if (sId === 5) {
       if (revisiData && revisiData.s5 && revisiData.s5.codes) {
@@ -891,8 +891,10 @@
     const sId = Number(state.internalSasaranId);
 
     if (sId === 4) {
-      // Sasaran 4: 168 Hubungan Internal sesuai data resmi Kerja Kelompok 1 (3).xlsx
+      // Sasaran 4: Relasi Internal dinamis sesuai data resmi Google Sheets / Kerja Kelompok 1
       function getKKAspect(code) {
+        const sub = getSubstansi(code);
+        if (sub && sub.aspek) return sub.aspek;
         if (code.startsWith("SS4-KK.KF.")) return "Ketepatan Fungsi";
         if (code.startsWith("SS4-KK.KU.")) return "Ketepatan Ukuran";
         if (code.startsWith("SS4-KK.KP.")) return "Ketepatan Proses";
@@ -901,6 +903,8 @@
       }
 
       function getKKGroup(code) {
+        const sub = getSubstansi(code);
+        if (sub && sub.indikator) return sub.indikator;
         if (code.startsWith("SS4-KK.KF.1")) return "1. Mandat (Core Function)";
         if (code.startsWith("SS4-KK.KF.2")) return "2. Distribusi Kewenangan";
         if (code.startsWith("SS4-KK.KF.3")) return "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung";
@@ -1285,23 +1289,20 @@
 
     const isS4InternalComp = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
     if (isS4InternalComp) {
-      const s4FilterItems = [
-        { value: "Ketepatan Fungsi", label: "Aspek: Ketepatan Fungsi (49 relasi)" },
-        { value: "1. Mandat (Core Function)", label: "  ↳ 1. Mandat (Core Function)" },
-        { value: "2. Distribusi Kewenangan", label: "  ↳ 2. Distribusi Kewenangan" },
-        { value: "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung", label: "  ↳ 3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung" },
-        { value: "Ketepatan Ukuran", label: "Aspek: Ketepatan Ukuran (35 relasi)" },
-        { value: "1. Rentang Kendali", label: "  ↳ 1. Rentang Kendali" },
-        { value: "2. Departemensi (Pembidangan)", label: "  ↳ 2. Departemensi (Pembidangan)" },
-        { value: "Ketepatan Proses", label: "Aspek: Ketepatan Proses (49 relasi)" },
-        { value: "1. Proses Bisnis", label: "  ↳ 1. Proses Bisnis" },
-        { value: "2. Proses Pengambilan Keputusan", label: "  ↳ 2. Proses Pengambilan Keputusan" },
-        { value: "3. Proses Perencanaan", label: "  ↳ 3. Proses Perencanaan" },
-        { value: "Tata Kelola", label: "Aspek: Tata Kelola (35 relasi)" },
-        { value: "1. Sistem Kerja", label: "  ↳ 1. Sistem Kerja" },
-        { value: "2. Budaya Kerja", label: "  ↳ 2. Budaya Kerja" },
-        { value: "3. Pengendalian Risiko", label: "  ↳ 3. Pengendalian Risiko" }
-      ];
+      const s4Comps = sourceComponents();
+      const s4Relations = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4);
+      const s4FilterItems = [];
+      s4Comps.forEach(asp => {
+        const count = s4Relations.filter(r => {
+          const sub = getSubstansi(r.source);
+          const aName = (sub && sub.aspek) ? sub.aspek : getKKAspect(r.source);
+          return aName === asp.name;
+        }).length;
+        s4FilterItems.push({ value: asp.name, label: `Aspek: ${asp.name} (${count} relasi)` });
+        (asp.groups || []).forEach(grp => {
+          s4FilterItems.push({ value: grp, label: `  ↳ ${grp}` });
+        });
+      });
       fillSelect(dom.selectComponent, s4FilterItems, state.component, "Semua Aspek & Kelompok KK");
     } else {
       const comps = sourceComponents();
@@ -1388,7 +1389,8 @@
       const totalPairs = revisiData?.metadata?.count_group_pairs || 128;
       dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 5:</strong> Satu angka pada sel menunjukkan banyaknya <b>indikator tujuan yang berbeda</b> yang mempunyai setidaknya satu rujukan kode resmi. Kode skala penilaian (1–5) dihitung sebagai satu indikator tujuan dan tidak dijumlahkan berulang. Terdapat <b>${totalPairs} pasangan indikator unik</b> pada keseluruhan Sasaran 5 (<strong>49 pasangan</strong> saat indeks sumber IPP).`;
     } else if (sId === 4) {
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan banyaknya relasi indikator sesuai <b>168 hubungan keterkaitan resmi Sasaran 4</b> antara Kapabilitas Kelembagaan dan 7 indeks pembanding.`;
+      const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
+      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan banyaknya relasi indikator sesuai <b>${s4Count} hubungan keterkaitan resmi Sasaran 4</b> antara Kapabilitas Kelembagaan dan 7 indeks pembanding.`;
     } else if (sId === 3) {
       dom.logicNote.innerHTML = `<strong>Status Data Sasaran 3:</strong> Menggunakan sheet <b>Copy of Sasaran 3</b> dari file <code>Bahan paparan Kamis (30092026) (1).xlsx</code> dengan 2 indeks aktif: <b>Instrumen Pengumpulan Data IIIP</b> (92 pertanyaan) dan <b>Desain IIIP</b> (34 indikator), memetakan <b>72 relasi internal aktual</b> (72 pasangan unik).`;
     }
@@ -1431,35 +1433,41 @@
 
     const heroKpiGrid = dom.stageMatrix ? dom.stageMatrix.querySelector(".hero-kpi-grid") : null;
     if (sId === 4) {
+      const s4Count = pairs.length;
+      const s4AspectCount = comps.length;
+      const s4KelompokCount = new Set(pairs.map(p => p.sourceKelompok).filter(Boolean)).size;
+      const s4IndikatorCount = new Set(pairs.map(p => p.sourceCode).filter(Boolean)).size;
+      const s4ComparatorCount = dests.length;
+
       if (heroKpiGrid) {
         heroKpiGrid.innerHTML = `
           <div class="kpi-mini-card kpi-text-only">
             <div class="kpi-info">
-              <strong id="pairCount">${pairs.length.toLocaleString("id-ID")}</strong>
+              <strong id="pairCount">${s4Count.toLocaleString("id-ID")}</strong>
               <small id="pairUnit">Hubungan Keterkaitan</small>
             </div>
           </div>
           <div class="kpi-mini-card kpi-text-only">
             <div class="kpi-info">
-              <strong id="heroStatAspects">4</strong>
+              <strong id="heroStatAspects">${s4AspectCount}</strong>
               <small id="heroStatAspectsUnit">Aspek KK</small>
             </div>
           </div>
           <div class="kpi-mini-card kpi-text-only">
             <div class="kpi-info">
-              <strong>11</strong>
+              <strong id="heroStatKelompok">${s4KelompokCount}</strong>
               <small>Kelompok KK</small>
             </div>
           </div>
           <div class="kpi-mini-card kpi-text-only">
             <div class="kpi-info">
-              <strong>24</strong>
+              <strong id="heroStatIndikator">${s4IndikatorCount}</strong>
               <small>Indikator KK</small>
             </div>
           </div>
           <div class="kpi-mini-card kpi-text-only">
             <div class="kpi-info">
-              <strong id="heroStatComparators">7</strong>
+              <strong id="heroStatComparators">${s4ComparatorCount}</strong>
               <small id="heroStatComparatorsUnit">Indeks Pembanding</small>
             </div>
           </div>
@@ -2812,7 +2820,8 @@
     }
 
     // Set KPI banner stats matching bottom-left screenshot
-    dom.mapTotal.textContent = allFiltered ? allFiltered.length.toString() : "168";
+    const s4RelCount = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
+    dom.mapTotal.textContent = allFiltered ? allFiltered.length.toString() : s4RelCount.toString();
     dom.mapUnit.textContent = "Hubungan";
     if (dom.graphInstCount) {
       dom.graphInstCount.textContent = "8";
@@ -3432,7 +3441,8 @@
       } else if (Number(state.internalSasaranId) === 3) {
         dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 3:</strong> Menampilkan penyandingan substansi antara Instrumen Pengumpulan Data Survei IIIP dan Desain IIIP berdasarkan sheet <code>Copy of Sasaran 3</code>. Pilih <em>Lihat Detail</em> untuk menelaah rincian indikator, pertanyaan, dan justifikasi keterkaitan secara utuh.`;
       } else {
-        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> Menampilkan 168 hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
+        const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
+        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> Menampilkan ${s4Count} hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
       }
     }
 
@@ -3634,18 +3644,28 @@
 
   function updateTopbarSummary() {
     if (!dom.topbarSummaryText) return;
+    const s4Badge = document.getElementById("s4SyncBadge");
     if (state.activeMenu === "internal") {
       const sId = Number(state.internalSasaranId);
+      if (s4Badge) {
+        if (sId === 4) {
+          s4Badge.classList.remove("hidden");
+        } else {
+          s4Badge.classList.add("hidden");
+        }
+      }
       if (sId === 5) {
         dom.topbarSummaryText.textContent = "Sasaran 5: 49 Pasangan Indikator (IPP)";
       } else if (sId === 4) {
-        dom.topbarSummaryText.textContent = "Sasaran 4: 168 Hubungan Keterkaitan (KK)";
+        const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
+        dom.topbarSummaryText.textContent = `Sasaran 4: ${s4Count} Hubungan Keterkaitan (KK)`;
       } else if (sId === 3) {
         dom.topbarSummaryText.textContent = "Sasaran 3: 72 Relasi (IIIP)";
       } else {
         dom.topbarSummaryText.textContent = "Sasaran " + sId;
       }
     } else {
+      if (s4Badge) s4Badge.classList.add("hidden");
       dom.topbarSummaryText.textContent = "Sasaran 1: 1.631 Pasangan Relasi (PEMDI)";
     }
   }
@@ -5112,15 +5132,184 @@
       exportGraphPdf,
       exportMatrixPdf,
       exportListPdf,
-      exportStageToPdf
+      exportStageToPdf,
+      syncSasaran4FromAPI
     };
   }
 
-  // 15. Inisialisasi Aplikasi Saat Halaman Dimuat
+  // 15. Sinkronisasi Otomatis Google Sheets untuk Sasaran 4
+  let s4LastSyncHash = "";
+  let s4SyncIntervalId = null;
+  let isS4Syncing = false;
+
+  async function syncSasaran4FromAPI(silent = false) {
+    if (isS4Syncing) return;
+    isS4Syncing = true;
+
+    const s4Badge = document.getElementById("s4SyncBadge");
+    const s4Text = document.getElementById("s4SyncText");
+    const isS4Active = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+
+    if (s4Badge && isS4Active) {
+      s4Badge.classList.remove("hidden", "offline", "synced");
+      s4Badge.classList.add("syncing");
+      if (s4Text && !silent) s4Text.textContent = "Menyinkronkan data...";
+    }
+
+    try {
+      let res;
+      try {
+        res = await fetch("/api/sasaran4", { cache: "no-cache" });
+      } catch (e1) {
+        res = await fetch("/.netlify/functions/get-sasaran4", { cache: "no-cache" });
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const payload = await res.json();
+      if (!payload || !payload.success || !Array.isArray(payload.relations) || payload.relations.length === 0) {
+        throw new Error(payload?.error || "Format payload tidak valid");
+      }
+
+      const newHash = `${payload.totalRelations}_${payload.updatedAt || ""}_${payload.relations[0]?.id || ""}_${payload.relations[payload.relations.length - 1]?.id || ""}`;
+      const dataChanged = (newHash !== s4LastSyncHash);
+
+      if (dataChanged) {
+        s4LastSyncHash = newHash;
+
+        // 1. Perbarui sasaranData.relations in-memory
+        if (sasaranData && Array.isArray(sasaranData.relations)) {
+          const nonS4Relations = sasaranData.relations.filter(
+            r => !(r.sourceSasaran === 4 && r.targetSasaran === 4)
+          );
+          const newS4Relations = payload.relations.map(r => ({
+            scope: "INTERNAL",
+            source: r.sourceCode,
+            target: r.destCode,
+            sourceCell: r.sourceCell || `Row ${r.row || 0}`,
+            relationColumn: "Informasi Keterkaitan",
+            sourceSasaran: 4,
+            targetSasaran: 4,
+            sourceInstrument: "KK",
+            targetInstrument: r.destInst,
+            strengthVariants: [],
+            strength: null
+          }));
+          sasaranData.relations = [...nonS4Relations, ...newS4Relations];
+        }
+
+        // 2. Perbarui window.RB_JENIS_KETERKAITAN
+        if (window.RB_JENIS_KETERKAITAN && payload.justifikasi) {
+          window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi = Object.assign(
+            {},
+            window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi || {},
+            payload.justifikasi
+          );
+        }
+
+        // 3. Perbarui window.RB_SUBSTANSI_INDIKATOR jika ada metadata baru
+        if (window.RB_SUBSTANSI_INDIKATOR) {
+          payload.relations.forEach(r => {
+            if (r.sourceCode) {
+              const existingSrc = window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] || {};
+              window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] = {
+                ...existingSrc,
+                code: r.sourceCode,
+                sasaran_id: 4,
+                sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
+                instrument_code: "KK",
+                instrument_name: "Kapabilitas Kelembagaan",
+                aspek: r.sourceAspek || existingSrc.aspek || "",
+                indikator: r.sourceKelompok || existingSrc.indikator || "",
+                pernyataan: r.sourceIndikator || existingSrc.pernyataan || "",
+                definisi_operasional: r.sourceDefinisi || existingSrc.definisi_operasional || "",
+                pembina: existingSrc.pembina || "Kementerian PANRB"
+              };
+            }
+            if (r.destCode) {
+              const existingDst = window.RB_SUBSTANSI_INDIKATOR[r.destCode] || {};
+              window.RB_SUBSTANSI_INDIKATOR[r.destCode] = {
+                ...existingDst,
+                code: r.destCode,
+                sasaran_id: 4,
+                sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
+                instrument_code: r.destInst || existingDst.instrument_code || "",
+                instrument_name: instName(r.destInst) || existingDst.instrument_name || "",
+                indikator: existingDst.indikator || r.destRincian || "",
+                sub_indikator: r.destRincian || existingDst.sub_indikator || "",
+                pembina: existingDst.pembina || ""
+              };
+            }
+          });
+        }
+
+        // 4. Render ulang tampilan jika sedang membuka Sasaran 4
+        if (isS4Active) {
+          populateFilters();
+          renderStage();
+          if (state.activeStage === "list" && state.focusItem) {
+            const refreshedItem = groupRelations(filteredRelations()).find(p => p.sourceCode === state.focusItem.sourceCode && p.destCode === state.focusItem.destCode);
+            if (refreshedItem) {
+              state.focusItem = refreshedItem;
+              renderFocusRelationCard(refreshedItem);
+            }
+          }
+        }
+      }
+
+      // Format waktu pembaruan
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      const dateStr = now.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit" });
+      const sourceLabel = payload.source === "google_sheets" ? "Google Sheets" : "Dataset Baseline";
+
+      if (s4Badge && isS4Active) {
+        s4Badge.classList.remove("syncing", "offline", "hidden");
+        s4Badge.classList.add("synced");
+        if (s4Text) {
+          s4Text.textContent = `Data diperbarui: ${dateStr} ${timeStr} (${sourceLabel})`;
+        }
+      }
+    } catch (err) {
+      console.warn("[S4 Sync] Menggunakan dataset lokal baseline:", err.message);
+      if (s4Badge && isS4Active) {
+        s4Badge.classList.remove("syncing", "synced", "hidden");
+        s4Badge.classList.add("offline");
+        if (s4Text) {
+          s4Text.textContent = "Mode Offline (Dataset Lokal)";
+        }
+      }
+    } finally {
+      isS4Syncing = false;
+    }
+  }
+
+  function initSasaran4AutoSync() {
+    syncSasaran4FromAPI(false);
+
+    if (s4SyncIntervalId) clearInterval(s4SyncIntervalId);
+    s4SyncIntervalId = setInterval(() => {
+      syncSasaran4FromAPI(true);
+    }, 60000);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        syncSasaran4FromAPI(false);
+      }
+    });
+    window.addEventListener("focus", () => {
+      syncSasaran4FromAPI(false);
+    });
+  }
+
+  // 16. Inisialisasi Aplikasi Saat Halaman Dimuat
   function initApp() {
     initEvents();
     populateFilters();
     setStage("matrix");
+    initSasaran4AutoSync();
   }
 
   if (document.readyState === "loading") {

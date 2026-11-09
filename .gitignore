@@ -9,3 +9,9 @@ desktop.ini
 ~$*
 *.xlsx
 *.csv
+
+# Environment and Secrets
+.env
+.env.*
+!.env.example
+
