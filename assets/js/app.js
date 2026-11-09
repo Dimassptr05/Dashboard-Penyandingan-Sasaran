@@ -47,6 +47,13 @@
     { code: "IPA", name: "Indeks Pengelolaan Aset", color: "#2563eb" }
   ];
 
+  const definitionHtml = (value, esc) => {
+    const definition = String(value || "").trim();
+    return definition && definition !== "-"
+      ? `<div class="rincian-isi-penjelasan"><span class="rincian-penjelasan-label">Definisi Operasional</span>${esc(definition)}</div>`
+      : "";
+  };
+
   const SASARAN4_CONFIG = {
     KK: {
       name: "Kapabilitas Kelembagaan (KK)",
@@ -56,21 +63,19 @@
       getIndikator: d => d.indikator,
       jenisButir: "Pernyataan",
       getNamaButir: d => d.pernyataan,
-      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc)
     },
     IPPN: {
       name: "Indeks Perencanaan Pembangunan Nasional (IPPN)",
-      aspekLabel: "",
-      getAspek: () => "",
-      indikatorLabel: "Indikator",
-      getIndikator: d => d.indikator,
+      aspekLabel: "Indikator",
+      getAspek: d => d.indikator,
+      indikatorLabel: "",
+      getIndikator: () => "",
       jenisButir: "Sub-Indikator",
       getNamaButir: d => d.sub_indikator,
       getPenjelasanHtml: (d, esc) => {
         let html = "";
-        if (d.isi_penjelasan && d.isi_penjelasan !== "-") {
-          html += `<div class="rincian-isi-penjelasan">${esc(d.isi_penjelasan)}</div>`;
-        }
+        html += definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc);
         if (d.status_penilaian && d.status_penilaian !== "-") {
           html += `<div class="rincian-status-tag"><span class="status-tag-label">Status Penilaian:</span> <span class="status-tag-val">${esc(d.status_penilaian)}</span></div>`;
         }
@@ -85,17 +90,17 @@
       getIndikator: d => cleanLabel((d && d.indikator) || ""),
       jenisButir: "Cakupan",
       getNamaButir: d => cleanLabel((d && (d.cakupan || d.komponen_penilaian || d.butir_penilaian)) || ""),
-      getPenjelasanHtml: () => ""
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc)
     },
     SPIP: {
       name: "Sistem Pengendalian Intern Pemerintah (SPIP)",
       aspekLabel: "Komponen",
       getAspek: d => d.komponen,
-      indikatorLabel: "Indikator",
+      indikatorLabel: "Unsur",
       getIndikator: d => d.unsur,
-      jenisButir: "Sub Uraian",
+      jenisButir: "Sub-Uraian",
       getNamaButir: d => d.sub_uraian,
-      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc)
     },
     SAKIP: {
       name: "Sistem Akuntabilitas Kinerja Instansi Pemerintah (SAKIP)",
@@ -108,7 +113,7 @@
       getPenjelasanHtml: (d, esc) => {
         if (!d) return "";
         if (d.definisi_operasional) {
-          return `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>`;
+          return definitionHtml(d.definisi_operasional, esc);
         }
         const list = Array.isArray(d.kriteria_evaluasi) ? d.kriteria_evaluasi : [];
         if (list.length === 0) return "";
@@ -124,23 +129,13 @@
     },
     ELPPD: {
       name: "Evaluasi Laporan Penyelenggaraan Pemerintahan Daerah (ELPPD)",
-      aspekLabel: "Kelompok Penilaian",
-      getAspek: d => d.kelompok_penilaian || d.aspek,
-      indikatorLabel: "Indikator",
-      getIndikator: d => (d.indikator && d.indikator !== d.butir_penilaian && d.indikator.length < 80) ? d.indikator : "",
-      jenisButir: "Butir Penilaian",
-      getNamaButir: d => d.butir_penilaian || d.indikator,
-      getPenjelasanHtml: (d, esc) => {
-        const m = d.kinerja_makro && d.kinerja_makro !== "-" ? d.kinerja_makro : "";
-        const u = d.kinerja_urusan && d.kinerja_urusan !== "-" ? d.kinerja_urusan : "";
-        if (!m && !u) return "";
-        return `
-          <div class="rincian-elppd-block">
-            ${m ? `<div class="elppd-dim-item"><span class="elppd-dim-label">Kinerja Makro:</span><div class="elppd-dim-val">${esc(m)}</div></div>` : ""}
-            ${u ? `<div class="elppd-dim-item"><span class="elppd-dim-label">Kinerja Penyelenggaraan Urusan Pemerintahan:</span><div class="elppd-dim-val">${esc(u)}</div></div>` : ""}
-          </div>
-        `;
-      }
+      aspekLabel: "Aspek",
+      getAspek: d => d.aspek || d.kelompok_penilaian,
+      indikatorLabel: "Sub-Aspek",
+      getIndikator: d => d.sub_aspek,
+      jenisButir: "Indikator",
+      getNamaButir: d => d.indikator,
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc)
     },
     IKPA: {
       name: "Indikator Kinerja Pelaksanaan Anggaran (IKPA)",
@@ -150,7 +145,7 @@
       getIndikator: d => d.indikator,
       jenisButir: "Pernyataan",
       getNamaButir: d => d.pernyataan,
-      getPenjelasanHtml: (d, esc) => d.definisi_operasional ? `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>` : ""
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc)
     },
     IPA: {
       name: "Indeks Pengelolaan Aset (IPA)",
@@ -160,7 +155,7 @@
       getIndikator: d => d.parameter,
       jenisButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? "Sub-Parameter" : "Parameter",
       getNamaButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? d.sub_parameter : d.parameter,
-      getPenjelasanHtml: (d, esc) => d.isi_penjelasan && d.isi_penjelasan !== "-" ? `<div class="rincian-isi-penjelasan">${esc(d.isi_penjelasan)}</div>` : ""
+      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc)
     }
   };
 

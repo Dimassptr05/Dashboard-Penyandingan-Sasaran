@@ -1842,6 +1842,16 @@ html, body {
   word-break: break-word;
 }
 
+.rincian-penjelasan-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 .compare-col-source .rincian-isi-penjelasan {
   border-left-color: #0284c7;
   background: #f0f9ff;
