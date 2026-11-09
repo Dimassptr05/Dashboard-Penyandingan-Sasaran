@@ -5144,7 +5144,7 @@
     ext: { lastHash: "", status: null, name: "Relasi Eksternal" }
   };
   let activeSyncIntervalId = null;
-  let isSyncInProgress = false;
+  const syncInProgress = new Set();
 
   function getCurrentSyncTarget() {
     if (state.activeMenu === "external") {
@@ -5200,9 +5200,8 @@
   }
 
   async function syncActiveSasaran(targetKey = null, silent = false) {
-    if (isSyncInProgress) return;
     const target = targetKey ? { key: targetKey, ...syncStateMap[targetKey] } : getCurrentSyncTarget();
-    if (!target) return;
+    if (!target || syncInProgress.has(target.key)) return;
 
     // Resolve endpoint
     let endpoint = target.endpoint;
@@ -5214,38 +5213,39 @@
       else if (target.key === "ext") { endpoint = "/api/external"; fallback = "/.netlify/functions/get-external"; }
     }
 
-    isSyncInProgress = true;
+    syncInProgress.add(target.key);
     if (!silent) {
       if (syncStateMap[target.key]) syncStateMap[target.key].status = "syncing";
       updateSyncBadgeDisplay();
     }
 
     try {
-      let res;
-      try {
-        res = await fetch(endpoint, { cache: "no-cache" });
-      } catch (e1) {
-        res = await fetch(fallback, { cache: "no-cache" });
-      }
-
-      // Retry sekali otomatis untuk mengatasi transient delay / cold-start serverless
-      if (!res || !res.ok) {
-        await new Promise(r => setTimeout(r, 1200));
-        try {
-          res = await fetch(endpoint, { cache: "no-cache" });
-        } catch (e2) {
-          res = await fetch(fallback, { cache: "no-cache" });
+      const endpoints = [...new Set([endpoint, fallback].filter(Boolean))];
+      let payload = null;
+      let lastError = null;
+      for (let attempt = 0; attempt < 2 && !payload; attempt++) {
+        for (const url of endpoints) {
+          try {
+            const res = await fetch(url, { cache: "no-cache" });
+            if (!res.ok) {
+              lastError = new Error(`HTTP ${res.status} dari ${url}`);
+              continue;
+            }
+            const responsePayload = await res.json();
+            if (!responsePayload || !responsePayload.success) {
+              lastError = new Error(responsePayload?.error || `Respon tidak valid dari ${url}`);
+              continue;
+            }
+            payload = responsePayload;
+            break;
+          } catch (err) {
+            lastError = err;
+          }
         }
+        if (!payload && attempt === 0) await new Promise(r => setTimeout(r, 1200));
       }
 
-      if (!res || !res.ok) {
-        throw new Error(`HTTP ${res ? res.status : "Network Error"}`);
-      }
-
-      const payload = await res.json();
-      if (!payload || !payload.success) {
-        throw new Error(payload?.error || "Gagal memproses respon");
-      }
+      if (!payload) throw lastError || new Error("Gagal memproses respon");
 
       const newHash = `${payload.totalRelations}_${payload.updatedAt || ""}`;
       const dataChanged = !syncStateMap[target.key] || (syncStateMap[target.key].lastHash !== newHash);
@@ -5349,7 +5349,9 @@
         const currentActive = getCurrentSyncTarget();
         if (currentActive.key === target.key) {
           populateFilters();
-          renderStage();
+          if (state.activeStage === "matrix") renderStageMatrix();
+          else if (state.activeStage === "graph") renderStageGraph();
+          else if (state.activeStage === "list") renderStageList();
         }
       }
 
@@ -5376,7 +5378,7 @@
       };
       updateSyncBadgeDisplay();
     } finally {
-      isSyncInProgress = false;
+      syncInProgress.delete(target.key);
     }
   }
 
