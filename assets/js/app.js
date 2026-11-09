@@ -3644,16 +3644,11 @@
 
   function updateTopbarSummary() {
     if (!dom.topbarSummaryText) return;
-    const s4Badge = document.getElementById("s4SyncBadge");
+    if (typeof updateSyncBadgeDisplay === "function") {
+      updateSyncBadgeDisplay();
+    }
     if (state.activeMenu === "internal") {
       const sId = Number(state.internalSasaranId);
-      if (s4Badge) {
-        if (sId === 4) {
-          s4Badge.classList.remove("hidden");
-        } else {
-          s4Badge.classList.add("hidden");
-        }
-      }
       if (sId === 5) {
         dom.topbarSummaryText.textContent = "Sasaran 5: 49 Pasangan Indikator (IPP)";
       } else if (sId === 4) {
@@ -3665,7 +3660,6 @@
         dom.topbarSummaryText.textContent = "Sasaran " + sId;
       }
     } else {
-      if (s4Badge) s4Badge.classList.add("hidden");
       dom.topbarSummaryText.textContent = "Sasaran 1: 1.631 Pasangan Relasi (PEMDI)";
     }
   }
@@ -3736,6 +3730,9 @@
 
     populateFilters();
     setStage("matrix");
+    if (typeof syncActiveSasaran === "function") {
+      syncActiveSasaran(null, false);
+    }
   }
 
   // 13. Fitur Ekspor CSV Terfilter
@@ -4846,6 +4843,9 @@
         state.chosenDest = "";
         populateFilters();
         setStage("matrix");
+        if (typeof syncActiveSasaran === "function") {
+          syncActiveSasaran(null, false);
+        }
       };
     }
 
@@ -4990,6 +4990,9 @@
         dom.inputSearchFree.value = "";
         populateFilters();
         setStage("matrix");
+        if (typeof syncActiveSasaran === "function") {
+          syncActiveSasaran(null, false);
+        }
       };
     }
 
@@ -5133,35 +5136,101 @@
       exportMatrixPdf,
       exportListPdf,
       exportStageToPdf,
-      syncSasaran4FromAPI
+      syncSasaran4FromAPI,
+      syncActiveSasaran
     };
   }
 
-  // 15. Sinkronisasi Otomatis Google Sheets untuk Sasaran 4
-  let s4LastSyncHash = "";
-  let s4SyncIntervalId = null;
-  let isS4Syncing = false;
+  // 15. Sinkronisasi Otomatis Google Sheets untuk Seluruh Sasaran (1 s.d. 5)
+  const syncStateMap = {
+    s3: { lastHash: "", status: null, name: "Sasaran 3" },
+    s4: { lastHash: "", status: null, name: "Sasaran 4" },
+    s5: { lastHash: "", status: null, name: "Sasaran 5" },
+    ext: { lastHash: "", status: null, name: "Relasi Eksternal" }
+  };
+  let activeSyncIntervalId = null;
+  let isSyncInProgress = false;
 
-  async function syncSasaran4FromAPI(silent = false) {
-    if (isS4Syncing) return;
-    isS4Syncing = true;
+  function getCurrentSyncTarget() {
+    if (state.activeMenu === "external") {
+      return { key: "ext", name: "Relasi Eksternal", endpoint: "/api/external", fallback: "/.netlify/functions/get-external" };
+    }
+    const sId = Number(state.internalSasaranId);
+    if (sId === 3) {
+      return { key: "s3", name: "Sasaran 3", endpoint: "/api/sasaran3", fallback: "/.netlify/functions/get-sasaran3" };
+    }
+    if (sId === 4) {
+      return { key: "s4", name: "Sasaran 4", endpoint: "/api/sasaran4", fallback: "/.netlify/functions/get-sasaran4" };
+    }
+    if (sId === 5) {
+      return { key: "s5", name: "Sasaran 5", endpoint: "/api/sasaran5", fallback: "/.netlify/functions/get-sasaran5" };
+    }
+    return { key: `s${sId}`, name: `Sasaran ${sId}`, endpoint: `/api/sasaran${sId}`, fallback: `/.netlify/functions/get-sasaran${sId}` };
+  }
 
+  function updateSyncBadgeDisplay() {
     const s4Badge = document.getElementById("s4SyncBadge");
     const s4Text = document.getElementById("s4SyncText");
-    const isS4Active = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+    if (!s4Badge) return;
 
-    if (s4Badge && isS4Active) {
-      s4Badge.classList.remove("hidden", "offline", "synced");
+    const target = getCurrentSyncTarget();
+    const st = syncStateMap[target.key];
+
+    s4Badge.classList.remove("hidden");
+
+    if (!st || !st.status) {
+      s4Badge.classList.remove("offline", "synced");
       s4Badge.classList.add("syncing");
-      if (s4Text && !silent) s4Text.textContent = "Menyinkronkan data...";
+      if (s4Text) s4Text.textContent = `Menyinkronkan ${target.name}...`;
+      return;
+    }
+
+    if (st.status === "syncing") {
+      s4Badge.classList.remove("offline", "synced");
+      s4Badge.classList.add("syncing");
+      if (s4Text) s4Text.textContent = `Menyinkronkan ${target.name}...`;
+    } else if (st.status === "synced") {
+      s4Badge.classList.remove("syncing", "offline");
+      s4Badge.classList.add("synced");
+      if (s4Text) {
+        s4Text.textContent = `Data diperbarui: ${st.dateStr} ${st.timeStr} (${st.sourceLabel} - ${target.name})`;
+      }
+    } else if (st.status === "offline") {
+      s4Badge.classList.remove("syncing", "synced");
+      s4Badge.classList.add("offline");
+      if (s4Text) {
+        s4Text.textContent = `Mode Offline (Dataset Baseline - ${target.name})`;
+      }
+    }
+  }
+
+  async function syncActiveSasaran(targetKey = null, silent = false) {
+    if (isSyncInProgress) return;
+    const target = targetKey ? { key: targetKey, ...syncStateMap[targetKey] } : getCurrentSyncTarget();
+    if (!target) return;
+
+    // Resolve endpoint
+    let endpoint = target.endpoint;
+    let fallback = target.fallback;
+    if (!endpoint) {
+      if (target.key === "s3") { endpoint = "/api/sasaran3"; fallback = "/.netlify/functions/get-sasaran3"; }
+      else if (target.key === "s4") { endpoint = "/api/sasaran4"; fallback = "/.netlify/functions/get-sasaran4"; }
+      else if (target.key === "s5") { endpoint = "/api/sasaran5"; fallback = "/.netlify/functions/get-sasaran5"; }
+      else if (target.key === "ext") { endpoint = "/api/external"; fallback = "/.netlify/functions/get-external"; }
+    }
+
+    isSyncInProgress = true;
+    if (!silent) {
+      if (syncStateMap[target.key]) syncStateMap[target.key].status = "syncing";
+      updateSyncBadgeDisplay();
     }
 
     try {
       let res;
       try {
-        res = await fetch("/api/sasaran4", { cache: "no-cache" });
+        res = await fetch(endpoint, { cache: "no-cache" });
       } catch (e1) {
-        res = await fetch("/.netlify/functions/get-sasaran4", { cache: "no-cache" });
+        res = await fetch(fallback, { cache: "no-cache" });
       }
 
       if (!res.ok) {
@@ -5169,138 +5238,167 @@
       }
 
       const payload = await res.json();
-      if (!payload || !payload.success || !Array.isArray(payload.relations) || payload.relations.length === 0) {
-        throw new Error(payload?.error || "Format payload tidak valid");
+      if (!payload || !payload.success) {
+        throw new Error(payload?.error || "Gagal memproses respon");
       }
 
-      const newHash = `${payload.totalRelations}_${payload.updatedAt || ""}_${payload.relations[0]?.id || ""}_${payload.relations[payload.relations.length - 1]?.id || ""}`;
-      const dataChanged = (newHash !== s4LastSyncHash);
+      const newHash = `${payload.totalRelations}_${payload.updatedAt || ""}`;
+      const dataChanged = !syncStateMap[target.key] || (syncStateMap[target.key].lastHash !== newHash);
 
       if (dataChanged) {
-        s4LastSyncHash = newHash;
-
-        // 1. Perbarui sasaranData.relations in-memory
-        if (sasaranData && Array.isArray(sasaranData.relations)) {
-          const nonS4Relations = sasaranData.relations.filter(
-            r => !(r.sourceSasaran === 4 && r.targetSasaran === 4)
-          );
-          const newS4Relations = payload.relations.map(r => ({
-            scope: "INTERNAL",
-            source: r.sourceCode,
-            target: r.destCode,
-            sourceCell: r.sourceCell || `Row ${r.row || 0}`,
-            relationColumn: "Informasi Keterkaitan",
-            sourceSasaran: 4,
-            targetSasaran: 4,
-            sourceInstrument: "KK",
-            targetInstrument: r.destInst,
-            strengthVariants: [],
-            strength: null
-          }));
-          sasaranData.relations = [...nonS4Relations, ...newS4Relations];
+        if (!syncStateMap[target.key]) {
+          syncStateMap[target.key] = { lastHash: newHash, name: target.name };
+        } else {
+          syncStateMap[target.key].lastHash = newHash;
         }
 
-        // 2. Perbarui window.RB_JENIS_KETERKAITAN
-        if (window.RB_JENIS_KETERKAITAN && payload.justifikasi) {
-          window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi = Object.assign(
-            {},
-            window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi || {},
-            payload.justifikasi
-          );
+        // Terapkan data ke model in-memory berdasarkan sasaran
+        if (target.key === "s3" && Array.isArray(payload.relations)) {
+          if (relasiInternal) {
+            relasiInternal.sasaran3 = {
+              relasi: payload.relations,
+              placeholders: payload.placeholders || []
+            };
+          }
+          if (window.RB_RELASI_INTERNAL) {
+            window.RB_RELASI_INTERNAL.sasaran3 = relasiInternal.sasaran3;
+          }
+        } else if (target.key === "s4" && Array.isArray(payload.relations)) {
+          if (sasaranData && Array.isArray(sasaranData.relations)) {
+            const nonS4Relations = sasaranData.relations.filter(
+              r => !(r.sourceSasaran === 4 && r.targetSasaran === 4)
+            );
+            const newS4Relations = payload.relations.map(r => ({
+              scope: "INTERNAL",
+              source: r.sourceCode,
+              target: r.destCode,
+              sourceCell: r.sourceCell || `Row ${r.row || 0}`,
+              relationColumn: "Informasi Keterkaitan",
+              sourceSasaran: 4,
+              targetSasaran: 4,
+              sourceInstrument: "KK",
+              targetInstrument: r.destInst,
+              strengthVariants: [],
+              strength: null
+            }));
+            sasaranData.relations = [...nonS4Relations, ...newS4Relations];
+          }
+
+          if (window.RB_JENIS_KETERKAITAN && payload.justifikasi) {
+            window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi = Object.assign(
+              {},
+              window.RB_JENIS_KETERKAITAN.sasaran4Justifikasi || {},
+              payload.justifikasi
+            );
+          }
+
+          if (window.RB_SUBSTANSI_INDIKATOR) {
+            payload.relations.forEach(r => {
+              if (r.sourceCode) {
+                const existingSrc = window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] || {};
+                window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] = {
+                  ...existingSrc,
+                  code: r.sourceCode,
+                  sasaran_id: 4,
+                  sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
+                  instrument_code: "KK",
+                  instrument_name: "Kapabilitas Kelembagaan",
+                  aspek: r.sourceAspek || existingSrc.aspek || "",
+                  indikator: r.sourceKelompok || existingSrc.indikator || "",
+                  pernyataan: r.sourceIndikator || existingSrc.pernyataan || "",
+                  definisi_operasional: r.sourceDefinisi || existingSrc.definisi_operasional || "",
+                  pembina: existingSrc.pembina || "Kementerian PANRB"
+                };
+              }
+              if (r.destCode) {
+                const existingDst = window.RB_SUBSTANSI_INDIKATOR[r.destCode] || {};
+                window.RB_SUBSTANSI_INDIKATOR[r.destCode] = {
+                  ...existingDst,
+                  code: r.destCode,
+                  sasaran_id: 4,
+                  sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
+                  instrument_code: r.destInst || existingDst.instrument_code || "",
+                  instrument_name: instName(r.destInst) || existingDst.instrument_name || "",
+                  indikator: existingDst.indikator || r.destRincian || "",
+                  sub_indikator: r.destRincian || existingDst.sub_indikator || "",
+                  pembina: existingDst.pembina || ""
+                };
+              }
+            });
+          }
+        } else if (target.key === "s5" && Array.isArray(payload.relations)) {
+          if (relasiInternal) {
+            relasiInternal.sasaran5 = payload.relations;
+          }
+          if (window.RB_RELASI_INTERNAL) {
+            window.RB_RELASI_INTERNAL.sasaran5 = payload.relations;
+          }
+        } else if (target.key === "ext" && Array.isArray(payload.relations)) {
+          if (window.RB_EXTERNAL_LATEST) {
+            window.RB_EXTERNAL_LATEST.relations = payload.relations;
+            if (payload.catalog) window.RB_EXTERNAL_LATEST.catalog = payload.catalog;
+          }
         }
 
-        // 3. Perbarui window.RB_SUBSTANSI_INDIKATOR jika ada metadata baru
-        if (window.RB_SUBSTANSI_INDIKATOR) {
-          payload.relations.forEach(r => {
-            if (r.sourceCode) {
-              const existingSrc = window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] || {};
-              window.RB_SUBSTANSI_INDIKATOR[r.sourceCode] = {
-                ...existingSrc,
-                code: r.sourceCode,
-                sasaran_id: 4,
-                sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
-                instrument_code: "KK",
-                instrument_name: "Kapabilitas Kelembagaan",
-                aspek: r.sourceAspek || existingSrc.aspek || "",
-                indikator: r.sourceKelompok || existingSrc.indikator || "",
-                pernyataan: r.sourceIndikator || existingSrc.pernyataan || "",
-                definisi_operasional: r.sourceDefinisi || existingSrc.definisi_operasional || "",
-                pembina: existingSrc.pembina || "Kementerian PANRB"
-              };
-            }
-            if (r.destCode) {
-              const existingDst = window.RB_SUBSTANSI_INDIKATOR[r.destCode] || {};
-              window.RB_SUBSTANSI_INDIKATOR[r.destCode] = {
-                ...existingDst,
-                code: r.destCode,
-                sasaran_id: 4,
-                sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
-                instrument_code: r.destInst || existingDst.instrument_code || "",
-                instrument_name: instName(r.destInst) || existingDst.instrument_name || "",
-                indikator: existingDst.indikator || r.destRincian || "",
-                sub_indikator: r.destRincian || existingDst.sub_indikator || "",
-                pembina: existingDst.pembina || ""
-              };
-            }
-          });
-        }
-
-        // 4. Render ulang tampilan jika sedang membuka Sasaran 4
-        if (isS4Active) {
+        // Render ulang tampilan jika sedang aktif membuka target tersebut
+        const currentActive = getCurrentSyncTarget();
+        if (currentActive.key === target.key) {
           populateFilters();
           renderStage();
-          if (state.activeStage === "list" && state.focusItem) {
-            const refreshedItem = groupRelations(filteredRelations()).find(p => p.sourceCode === state.focusItem.sourceCode && p.destCode === state.focusItem.destCode);
-            if (refreshedItem) {
-              state.focusItem = refreshedItem;
-              renderFocusRelationCard(refreshedItem);
-            }
-          }
         }
       }
 
-      // Format waktu pembaruan
       const now = new Date();
       const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
       const dateStr = now.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit" });
       const sourceLabel = payload.source === "google_sheets" ? "Google Sheets" : "Dataset Baseline";
 
-      if (s4Badge && isS4Active) {
-        s4Badge.classList.remove("syncing", "offline", "hidden");
-        s4Badge.classList.add("synced");
-        if (s4Text) {
-          s4Text.textContent = `Data diperbarui: ${dateStr} ${timeStr} (${sourceLabel})`;
-        }
-      }
+      syncStateMap[target.key] = {
+        status: "synced",
+        timeStr,
+        dateStr,
+        sourceLabel,
+        lastHash: newHash,
+        name: target.name
+      };
+
+      updateSyncBadgeDisplay();
     } catch (err) {
-      console.warn("[S4 Sync] Menggunakan dataset lokal baseline:", err.message);
-      if (s4Badge && isS4Active) {
-        s4Badge.classList.remove("syncing", "synced", "hidden");
-        s4Badge.classList.add("offline");
-        if (s4Text) {
-          s4Text.textContent = "Mode Offline (Dataset Lokal)";
-        }
-      }
+      console.warn(`[Sync ${target.name}] Menggunakan dataset lokal baseline:`, err.message);
+      syncStateMap[target.key] = {
+        status: "offline",
+        name: target.name
+      };
+      updateSyncBadgeDisplay();
     } finally {
-      isS4Syncing = false;
+      isSyncInProgress = false;
     }
   }
 
-  function initSasaran4AutoSync() {
-    syncSasaran4FromAPI(false);
+  // Alias kompatibilitas mundur
+  const syncSasaran4FromAPI = (silent = false) => syncActiveSasaran("s4", silent);
 
-    if (s4SyncIntervalId) clearInterval(s4SyncIntervalId);
-    s4SyncIntervalId = setInterval(() => {
-      syncSasaran4FromAPI(true);
+  function initUniversalAutoSync() {
+    // Sinkronkan target aktif pertama kali (Sasaran 5)
+    syncActiveSasaran(null, false);
+
+    // Sinkronkan sasaran lainnya di latar belakang secara bertahap
+    setTimeout(() => syncActiveSasaran("s4", true), 2000);
+    setTimeout(() => syncActiveSasaran("s3", true), 4000);
+    setTimeout(() => syncActiveSasaran("ext", true), 6000);
+
+    if (activeSyncIntervalId) clearInterval(activeSyncIntervalId);
+    activeSyncIntervalId = setInterval(() => {
+      syncActiveSasaran(null, true);
     }, 60000);
 
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) {
-        syncSasaran4FromAPI(false);
+        syncActiveSasaran(null, false);
       }
     });
     window.addEventListener("focus", () => {
-      syncSasaran4FromAPI(false);
+      syncActiveSasaran(null, false);
     });
   }
 
@@ -5309,7 +5407,7 @@
     initEvents();
     populateFilters();
     setStage("matrix");
-    initSasaran4AutoSync();
+    initUniversalAutoSync();
   }
 
   if (document.readyState === "loading") {

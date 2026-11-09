@@ -47,13 +47,15 @@ const MIME_TYPES = {
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 };
 
-// 3. Import Netlify Function handler
+// 3. Import Netlify Function handlers
+let sasaran3Handler = null;
 let sasaran4Handler = null;
-try {
-  sasaran4Handler = require("../netlify/functions/get-sasaran4.js").handler;
-} catch (e) {
-  console.error(" [WARN] Gagal memuat handler get-sasaran4:", e.message);
-}
+let sasaran5Handler = null;
+let externalHandler = null;
+try { sasaran3Handler = require("../netlify/functions/get-sasaran3.js").handler; } catch (e) {}
+try { sasaran4Handler = require("../netlify/functions/get-sasaran4.js").handler; } catch (e) {}
+try { sasaran5Handler = require("../netlify/functions/get-sasaran5.js").handler; } catch (e) {}
+try { externalHandler = require("../netlify/functions/get-external.js").handler; } catch (e) {}
 
 // 4. Server HTTP Utama
 const server = http.createServer(async (req, res) => {
@@ -61,16 +63,18 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname;
 
   // Endpoint API Netlify Function Emulation
-  if (
-    pathname === "/api/sasaran4" ||
-    pathname === "/.netlify/functions/get-sasaran4"
-  ) {
-    if (!sasaran4Handler) {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Handler get-sasaran4 tidak tersedia." }));
-      return;
-    }
+  let apiHandler = null;
+  if (pathname === "/api/sasaran3" || pathname === "/.netlify/functions/get-sasaran3") {
+    apiHandler = sasaran3Handler;
+  } else if (pathname === "/api/sasaran4" || pathname === "/.netlify/functions/get-sasaran4") {
+    apiHandler = sasaran4Handler;
+  } else if (pathname === "/api/sasaran5" || pathname === "/.netlify/functions/get-sasaran5") {
+    apiHandler = sasaran5Handler;
+  } else if (pathname === "/api/sasaran1" || pathname === "/api/external" || pathname === "/.netlify/functions/get-external") {
+    apiHandler = externalHandler;
+  }
 
+  if (apiHandler) {
     try {
       const event = {
         httpMethod: req.method,
@@ -78,7 +82,7 @@ const server = http.createServer(async (req, res) => {
         queryStringParameters: Object.fromEntries(parsedUrl.searchParams.entries()),
         headers: req.headers
       };
-      const result = await sasaran4Handler(event, {});
+      const result = await apiHandler(event, {});
 
       res.writeHead(result.statusCode || 200, result.headers || { "Content-Type": "application/json" });
       res.end(result.body || "");

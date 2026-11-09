@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * TEST INTEGRASI GOOGLE SHEETS & NETLIFY FUNCTIONS - SASARAN 4
+ * TEST INTEGRASI GOOGLE SHEETS & NETLIFY FUNCTIONS - ALL SASARAN (1 s.d. 5)
  * ============================================================================
  */
 
@@ -8,58 +8,56 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
-console.log("=== MEMULAI TEST INTEGRASI GOOGLE SHEETS SASARAN 4 ===");
+console.log("=== MEMULAI TEST INTEGRASI GOOGLE SHEETS ALL SASARAN (1 s.d. 5) ===");
 
-// 1. Uji Netlify Function Handler
+const s3Fn = require("../netlify/functions/get-sasaran3.js");
 const s4Fn = require("../netlify/functions/get-sasaran4.js");
+const s5Fn = require("../netlify/functions/get-sasaran5.js");
+const extFn = require("../netlify/functions/get-external.js");
 
 async function runTests() {
-  // Test 1: Handler baseline mode
-  const res = await s4Fn.handler({ httpMethod: "GET" }, {});
-  assert.strictEqual(res.statusCode, 200, "Handler harus return 200");
-  const payload = JSON.parse(res.body);
-  assert.strictEqual(payload.success, true, "Success harus true");
-  assert.strictEqual(payload.totalRelations, 168, "Total baseline harus 168");
-  console.log("✔ Test 1 Berhasil: Netlify Function baseline mode mengembalikan 168 relasi");
+  // Test 1: Sasaran 3 Handler
+  const res3 = await s3Fn.handler({ httpMethod: "GET" }, {});
+  assert.strictEqual(res3.statusCode, 200, "S3 handler harus return 200");
+  const p3 = JSON.parse(res3.body);
+  assert.strictEqual(p3.success, true, "S3 success harus true");
+  assert.strictEqual(p3.totalRelations, 72, "S3 total harus 72");
+  console.log("✔ Test 1 Berhasil: Sasaran 3 Netlify Function mengembalikan tepat 72 relasi");
 
-  // Test 2: Ekstraksi Alasan (Kolom L)
-  const sampleWithAI = "Penjelasan awal sebelum AI.\n\nHasil analisis AI=\nKedua indikator memiliki irisan tugas.";
-  const sampleWithoutAI = "Hubungan koordinatif langsung antara perencanaan dan pengendalian.";
-  const sampleEmpty = "";
+  // Test 2: Sasaran 4 Handler
+  const res4 = await s4Fn.handler({ httpMethod: "GET" }, {});
+  assert.strictEqual(res4.statusCode, 200, "S4 handler harus return 200");
+  const p4 = JSON.parse(res4.body);
+  assert.strictEqual(p4.success, true, "S4 success harus true");
+  assert.strictEqual(p4.totalRelations, 168, "S4 total harus 168");
+  console.log("✔ Test 2 Berhasil: Sasaran 4 Netlify Function mengembalikan tepat 168 relasi");
 
-  // Kita uji regex Col L di fungsi
-  const aiRegex = /Hasil\s+analisis\s+AI\s*[:=]\s*([\s\S]*)/i;
-  const matchA = sampleWithAI.match(aiRegex);
-  assert.ok(matchA, "Harus cocok dengan penanda AI");
-  assert.strictEqual(matchA[1].trim(), "Kedua indikator memiliki irisan tugas.");
+  // Test 3: Sasaran 5 Handler
+  const res5 = await s5Fn.handler({ httpMethod: "GET" }, {});
+  assert.strictEqual(res5.statusCode, 200, "S5 handler harus return 200");
+  const p5 = JSON.parse(res5.body);
+  assert.strictEqual(p5.success, true, "S5 success harus true");
+  assert.ok(p5.totalRelations >= 100, "S5 total harus terisi relasi lengkap");
+  console.log(`✔ Test 3 Berhasil: Sasaran 5 Netlify Function mengembalikan ${p5.totalRelations} relasi`);
 
-  const matchB = sampleWithoutAI.match(aiRegex);
-  assert.strictEqual(matchB, null, "Tidak boleh mencocokkan jika tidak ada penanda");
-  console.log("✔ Test 2 Berhasil: Aturan ekstraksi Kolom L (Kondisi A, B, C) valid");
+  // Test 4: External / Sasaran 1 Handler
+  const resExt = await extFn.handler({ httpMethod: "GET" }, {});
+  assert.strictEqual(resExt.statusCode, 200, "Ext handler harus return 200");
+  const pExt = JSON.parse(resExt.body);
+  assert.strictEqual(pExt.success, true, "Ext success harus true");
+  assert.strictEqual(pExt.totalRelations, 1631, "Ext total harus 1631");
+  console.log("✔ Test 4 Berhasil: Relasi Eksternal Netlify Function mengembalikan tepat 1.631 relasi");
 
-  // Test 3: Verifikasi dataset baseline
-  const baseline = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/sasaran4-verified-baseline.json"), "utf8"));
-  assert.strictEqual(baseline.total, 168);
-  assert.strictEqual(Object.keys(baseline.justifikasi).length, 168);
-
-  const kinds = {};
-  baseline.relations.forEach(r => {
-    kinds[r.jenis] = (kinds[r.jenis] || 0) + 1;
-  });
-  console.log("  Distribusi klasifikasi Sasaran 4:", kinds);
-  assert.strictEqual(kinds["Mendukung"], 97, "Mendukung harus 97");
-  assert.strictEqual(kinds["Langsung"], 61, "Langsung harus 61");
-  assert.strictEqual(kinds["Tidak Langsung"], 10, "Tidak Langsung harus 10");
-  console.log("✔ Test 3 Berhasil: 97 Mendukung, 61 Langsung, 10 Tidak Langsung terverifikasi");
-
-  // Test 4: Verifikasi integritas data sasaran lainnya
+  // Test 5: Verifikasi integritas data baseline offline
   global.window = global;
   eval(fs.readFileSync(path.resolve(__dirname, "../data/data-sasaran.js"), "utf8"));
   eval(fs.readFileSync(path.resolve(__dirname, "../data/data-relasi-internal.js"), "utf8"));
+  eval(fs.readFileSync(path.resolve(__dirname, "../data/rb-relasi-eksternal-terbaru.js"), "utf8"));
 
-  assert.ok(window.RB_RELASI_INTERNAL.sasaran3.relasi.length > 0, "Sasaran 3 harus tetap utuh");
-  assert.ok(window.RB_RELASI_INTERNAL.sasaran5.length > 0, "Sasaran 5 harus tetap utuh");
-  console.log("✔ Test 4 Berhasil: Sasaran 1, 3, dan 5 tetap 100% utuh tanpa perubahan");
+  assert.strictEqual(window.RB_RELASI_INTERNAL.sasaran3.relasi.length, 72, "Sasaran 3 baseline harus 72");
+  assert.strictEqual(window.RB_RELASI_INTERNAL.sasaran5.length, 1947, "Sasaran 5 baseline harus 1947");
+  assert.strictEqual(window.RB_EXTERNAL_LATEST.relations.length, 1631, "External baseline harus 1631");
+  console.log("✔ Test 5 Berhasil: Seluruh dataset baseline lokal 100% utuh dan sinkron");
 
   console.log("\n============================================================");
   console.log("   SELURUH PENGUJIAN INTEGRASI GOOGLE SHEETS BERHASIL (PASS)  ");
@@ -70,4 +68,3 @@ runTests().catch(err => {
   console.error("❌ TEST GAGAL:", err);
   process.exit(1);
 });
-

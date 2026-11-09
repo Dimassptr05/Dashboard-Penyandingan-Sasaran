@@ -3,8 +3,28 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/api/sasaran3"
+  to = "/.netlify/functions/get-sasaran3"
+  status = 200
+
+[[redirects]]
   from = "/api/sasaran4"
   to = "/.netlify/functions/get-sasaran4"
+  status = 200
+
+[[redirects]]
+  from = "/api/sasaran5"
+  to = "/.netlify/functions/get-sasaran5"
+  status = 200
+
+[[redirects]]
+  from = "/api/sasaran1"
+  to = "/.netlify/functions/get-external"
+  status = 200
+
+[[redirects]]
+  from = "/api/external"
+  to = "/.netlify/functions/get-external"
   status = 200
 
 [[headers]]
