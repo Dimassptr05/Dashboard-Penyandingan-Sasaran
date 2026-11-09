@@ -36,6 +36,17 @@
   window.RB_UTILS = Object.assign(window.RB_UTILS || {}, { cleanLabel });
 
   // Konfigurasi Tunggal Struktur Indeks Sasaran 4 (Sesuai Struktur Asli Excel)
+
+  const S4_MACRO_INSTRUMENTS = [
+    { code: "IPPN", name: "Indeks Perencanaan Pembangunan Nasional", color: "#0284c7" },
+    { code: "CKKP", name: "Capaian Kontribusi Kinerja Pembangunan", color: "#16a34a" },
+    { code: "SPIP", name: "Sistem Pengendalian Intern Pemerintah", color: "#ea580c" },
+    { code: "SAKIP", name: "Sistem Akuntabilitas Kinerja Instansi Pemerintah", color: "#9333ea" },
+    { code: "ELPPD", name: "Evaluasi Laporan Penyelenggaraan Pemda", color: "#db2777" },
+    { code: "IKPA", name: "Indikator Kinerja Pelaksanaan Anggaran", color: "#0d9488" },
+    { code: "IPA", name: "Indeks Pengelolaan Aset", color: "#2563eb" }
+  ];
+
   const SASARAN4_CONFIG = {
     KK: {
       name: "Kapabilitas Kelembagaan (KK)",
@@ -68,16 +79,13 @@
     },
     CKKP: {
       name: "Capaian Kontribusi Kinerja Pembangunan (CKKP)",
-      aspekLabel: "Kelompok Penilaian",
-      getAspek: d => d.kelompok_penilaian || d.kelompok_indikator,
+      aspekLabel: "Kategori",
+      getAspek: d => cleanLabel((d && (d.kategori || d.kelompok_penilaian || d.kelompok_indikator)) || ""),
       indikatorLabel: "Indikator",
-      getIndikator: d => d.indikator,
-      jenisButir: "Komponen Penilaian",
-      getNamaButir: d => d.komponen_penilaian || d.butir_penilaian,
-      getPenjelasanHtml: (d, esc) => {
-        const u = d.uraian_cakupan || d.hasil_penilaian;
-        return u && u !== "-" ? `<div class="rincian-isi-penjelasan">${esc(u)}</div>` : "";
-      }
+      getIndikator: d => cleanLabel((d && d.indikator) || ""),
+      jenisButir: "Cakupan",
+      getNamaButir: d => cleanLabel((d && (d.cakupan || d.komponen_penilaian || d.butir_penilaian)) || ""),
+      getPenjelasanHtml: () => ""
     },
     SPIP: {
       name: "Sistem Pengendalian Intern Pemerintah (SPIP)",
@@ -92,12 +100,16 @@
     SAKIP: {
       name: "Sistem Akuntabilitas Kinerja Instansi Pemerintah (SAKIP)",
       aspekLabel: "Komponen",
-      getAspek: d => d.komponen,
-      indikatorLabel: "",
-      getIndikator: () => "",
-      jenisButir: "Sub-Komponen",
-      getNamaButir: d => d.sub_komponen,
+      getAspek: d => (d && d.komponen) ? d.komponen : "",
+      indikatorLabel: "Sub-Komponen",
+      getIndikator: d => (d && d.sub_komponen) ? d.sub_komponen : "",
+      jenisButir: "Kriteria Evaluasi",
+      getNamaButir: d => (d && (d.kriteria || d.indikator || d.sub_komponen)) ? (d.kriteria || d.indikator || d.sub_komponen) : "",
       getPenjelasanHtml: (d, esc) => {
+        if (!d) return "";
+        if (d.definisi_operasional) {
+          return `<div class="rincian-isi-penjelasan">${esc(d.definisi_operasional)}</div>`;
+        }
         const list = Array.isArray(d.kriteria_evaluasi) ? d.kriteria_evaluasi : [];
         if (list.length === 0) return "";
         return `
@@ -481,7 +493,18 @@
 
     // Tahap 1: Matriks
     stageMatrix: document.getElementById("stageMatrix"),
+    pageHeadingTitle: document.getElementById("pageHeadingTitle"),
+    pageHeadingSubtitle: document.getElementById("pageHeadingSubtitle"),
     matrixTitle: document.getElementById("matrixTitle"),
+    heroStatPoints: document.getElementById("heroStatPoints"),
+    heroStatPointsUnit: document.getElementById("heroStatPointsUnit"),
+    heroStatAspects: document.getElementById("heroStatAspects"),
+    heroStatAspectsUnit: document.getElementById("heroStatAspectsUnit"),
+    heroStatComparators: document.getElementById("heroStatComparators"),
+    heroStatComparatorsUnit: document.getElementById("heroStatComparatorsUnit"),
+    graphInstCount: document.getElementById("graphInstCount"),
+    graphInstCountUnit: document.getElementById("graphInstCountUnit"),
+    btnExpandGraph: document.getElementById("btnExpandGraph"),
     matrixDesc: document.getElementById("matrixDesc"),
     pairCount: document.getElementById("pairCount"),
     pairUnit: document.getElementById("pairUnit"),
@@ -543,6 +566,64 @@
     btnCloseModal: document.getElementById("btnCloseModal"),
     btnDismissModal: document.getElementById("btnDismissModal")
   };
+
+  // 3.5. SVG Icons Helper Dictionary (Pixel-Perfect Executive Design)
+  const ICONS = {
+    building: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2L2 7h20L12 2z"/></svg>',
+    badge: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>',
+    folder: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
+    layers: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
+    target: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+    link: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+    list: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+    shield: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    medal: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>',
+    users: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+    gear: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+    cpu: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
+    share: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+    chart: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    calc: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>',
+    box: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+    doc: '<svg class="inline-svg-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+  };
+
+  function getInstrumentIcon(code) {
+    if (!code) return ICONS.layers;
+    const c = String(code).toUpperCase();
+    if (c === "OP") return ICONS.shield;
+    if (c === "IKK") return ICONS.layers;
+    if (c === "ZI") return ICONS.medal;
+    if (c === "IPPN") return ICONS.doc;
+    if (c === "CKKP") return ICONS.chart;
+    if (c === "SPIP") return ICONS.shield;
+    if (c === "SAKIP") return ICONS.medal;
+    if (c === "ELPPD") return ICONS.doc;
+    if (c === "IKPA") return ICONS.calc;
+    if (c === "IPA") return ICONS.box;
+    if (c === "KK") return ICONS.building;
+    if (c === "PEMDI") return ICONS.cpu;
+    if (c === "SM") return ICONS.users;
+    return ICONS.layers;
+  }
+
+  function getAspectIcon(name) {
+    if (!name) return ICONS.folder;
+    const n = String(name).toLowerCase();
+    if (n.includes("fungsi")) return ICONS.target;
+    if (n.includes("ukuran")) return ICONS.layers;
+    if (n.includes("proses")) return ICONS.gear;
+    if (n.includes("tata kelola") || n.includes("kelola")) return ICONS.shield;
+    if (n.includes("akses") || n.includes("inklusif")) return ICONS.users;
+    if (n.includes("efektivitas") || n.includes("pemerintahan") || n.includes("kendali")) return ICONS.gear;
+    if (n.includes("teknis") || n.includes("fondasi") || n.includes("data") || n.includes("teknologi")) return ICONS.cpu;
+    if (n.includes("keterlibatan") || n.includes("masyarakat") || n.includes("jaringan")) return ICONS.share;
+    if (n.includes("mandat")) return ICONS.target;
+    if (n.includes("bidang") || n.includes("departemen")) return ICONS.folder;
+    if (n.includes("rencana") || n.includes("perencanaan")) return ICONS.doc;
+    if (n.includes("risiko")) return ICONS.shield;
+    return ICONS.folder;
+  }
 
   // 4. Utilitas Helper
   function esc(str) {
@@ -607,18 +688,52 @@
 
     const sId = Number(state.internalSasaranId);
     if (sId === 4) {
-      const kkComps = [
-        "Departementasi (Pembidangan)",
-        "Mandat (Core Function)",
-        "Pengendalian Risiko",
-        "Proses Perencanaan",
-        "Rentang Kendali"
+      const s4Aspects = [
+        {
+          id: "Ketepatan Fungsi",
+          name: "Ketepatan Fungsi",
+          inst: "KK",
+          indikatorCount: 7,
+          groups: [
+            "1. Mandat (Core Function)",
+            "2. Distribusi Kewenangan",
+            "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung"
+          ]
+        },
+        {
+          id: "Ketepatan Ukuran",
+          name: "Ketepatan Ukuran",
+          inst: "KK",
+          indikatorCount: 5,
+          groups: [
+            "1. Rentang Kendali",
+            "2. Departemensi (Pembidangan)"
+          ]
+        },
+        {
+          id: "Ketepatan Proses",
+          name: "Ketepatan Proses",
+          inst: "KK",
+          indikatorCount: 7,
+          groups: [
+            "1. Proses Bisnis",
+            "2. Proses Pengambilan Keputusan",
+            "3. Proses Perencanaan"
+          ]
+        },
+        {
+          id: "Tata Kelola",
+          name: "Tata Kelola",
+          inst: "KK",
+          indikatorCount: 5,
+          groups: [
+            "1. Sistem Kerja",
+            "2. Budaya Kerja",
+            "3. Pengendalian Risiko"
+          ]
+        }
       ];
-      return kkComps.map(name => ({
-        id: name,
-        inst: "KK",
-        name: name
-      }));
+      return s4Aspects;
     }
     if (sId === 5) {
       if (revisiData && revisiData.s5 && revisiData.s5.codes) {
@@ -709,7 +824,7 @@
         const extDesc = (subExt && subExt.indikator) ? subExt.indikator : (extCat ? extCat.description.split("\n")[0].trim() : "");
         const pemdiDesc = (subPemdi && subPemdi.indikator) ? subPemdi.indikator : (pemdiCat ? pemdiCat.description.split("\n")[0].trim() : "");
 
-        const meta = jk ? jk.getKlasifikasi(r.source_group, r.target_group, r.source, r.target, extDesc, pemdiDesc) : {
+        const meta = jk ? jk.getKlasifikasi(r.source_group, r.target_group, r.source, r.target, extDesc, pemdiDesc, subExt, subPemdi) : {
           jenis: "Mendukung",
           status: "USULAN / Perlu validasi",
           alasan: (extDesc && pemdiDesc ? `"${pemdiDesc}" berkaitan dengan "${extDesc}".` : "")
@@ -764,6 +879,7 @@
           sourceQuestion: pemdiDesc,
           destQuestion: extDesc,
           reason: meta.alasan || (pemdiDesc && extDesc ? `"${pemdiDesc}" berkaitan dengan "${extDesc}".` : "Keterkaitan operasional antar-indikator sasaran strategis."),
+          recommendation: meta.rekomendasi || "Disarankan penguatan koordinasi teknis dan pemanfaatan hasil pengukuran ini untuk menyelaraskan implementasi sistem informasi sektoral dengan kerangka arsitektur Pemerintah Digital nasional.",
           refs: [`Sheet: ${r.sheet}; Sel Rujukan: ${r.reference_cell}; Sel Sumber: ${r.source_cell}`]
         });
       }
@@ -773,13 +889,27 @@
     const sId = Number(state.internalSasaranId);
 
     if (sId === 4) {
-      // Sasaran 4: 50 Hubungan Internal sesuai data resmi data-sasaran.js
+      // Sasaran 4: 168 Hubungan Internal sesuai data resmi Kerja Kelompok 1 (3).xlsx
+      function getKKAspect(code) {
+        if (code.startsWith("SS4-KK.KF.")) return "Ketepatan Fungsi";
+        if (code.startsWith("SS4-KK.KU.")) return "Ketepatan Ukuran";
+        if (code.startsWith("SS4-KK.KP.")) return "Ketepatan Proses";
+        if (code.startsWith("SS4-KK.TK.")) return "Tata Kelola";
+        return "Lainnya";
+      }
+
       function getKKGroup(code) {
-        if (code.startsWith("SS4-KK.KF")) return "Mandat (Core Function)";
-        if (code.startsWith("SS4-KK.KU.1")) return "Rentang Kendali";
-        if (code.startsWith("SS4-KK.KU.2")) return "Departementasi (Pembidangan)";
-        if (code.startsWith("SS4-KK.KP.3")) return "Proses Perencanaan";
-        if (code.startsWith("SS4-KK.TK.3")) return "Pengendalian Risiko";
+        if (code.startsWith("SS4-KK.KF.1")) return "1. Mandat (Core Function)";
+        if (code.startsWith("SS4-KK.KF.2")) return "2. Distribusi Kewenangan";
+        if (code.startsWith("SS4-KK.KF.3")) return "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung";
+        if (code.startsWith("SS4-KK.KU.1")) return "1. Rentang Kendali";
+        if (code.startsWith("SS4-KK.KU.2")) return "2. Departemensi (Pembidangan)";
+        if (code.startsWith("SS4-KK.KP.1")) return "1. Proses Bisnis";
+        if (code.startsWith("SS4-KK.KP.2")) return "2. Proses Pengambilan Keputusan";
+        if (code.startsWith("SS4-KK.KP.3")) return "3. Proses Perencanaan";
+        if (code.startsWith("SS4-KK.TK.1")) return "1. Sistem Kerja";
+        if (code.startsWith("SS4-KK.TK.2")) return "2. Budaya Kerja";
+        if (code.startsWith("SS4-KK.TK.3")) return "3. Pengendalian Risiko";
         return "Lainnya";
       }
 
@@ -806,7 +936,7 @@
         const srcInstName = srcCfg ? srcCfg.name : "Kapabilitas Kelembagaan (KK)";
         const dstInstName = dstCfg ? dstCfg.name : ((subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dstInst));
 
-        const srcAspek = (srcCfg && subSrc) ? srcCfg.getAspek(subSrc) : ((subSrc && subSrc.aspek) ? subSrc.aspek : "Ketepatan Fungsi");
+        const srcAspek = getKKAspect(r.source);
         const dstAspek = (dstCfg && subDst) ? dstCfg.getAspek(subDst) : ((subDst && subDst.aspek) ? subDst.aspek : "");
 
         const rawSrcIndikator = (srcCfg && subSrc) ? srcCfg.getIndikator(subSrc) : (subSrc && subSrc.indikator ? subSrc.indikator : srcGroup);
@@ -826,12 +956,12 @@
         const dstSubindikator = (dstCfg && subDst) ? cleanLabel(dstCfg.getNamaButir(subDst)) : "";
 
         const metaS4 = (jk && typeof jk.classifySasaran4 === "function")
-          ? jk.classifySasaran4(srcGroup, dstInst, dstGroup, r.source, r.target, cleanSrcInd, cleanDstInd)
+          ? jk.classifySasaran4(srcGroup, dstInst, dstGroup, r.source, r.target, cleanSrcInd, cleanDstInd, subSrc, subDst)
           : {
-              jenis: "Mendukung",
-              status: "Perlu Validasi",
-              alasan: `"${cleanSrcInd}" berkaitan dengan "${cleanDstInd}".`
-            };
+            jenis: "Mendukung",
+            status: "Perlu Validasi",
+            alasan: `"${cleanSrcInd}" berkaitan dengan "${cleanDstInd}".`
+          };
 
         if (state.rtype && metaS4.jenis !== state.rtype) continue;
 
@@ -847,6 +977,7 @@
           source: srcGroup,
           sourceName: cleanSrcInd,
           sourceAspek: srcAspek,
+          sourceKelompok: srcGroup,
           sourceIndikator: cleanSrcInd,
           sourceSubindikator: srcSubindikator,
           destInst: dstInst,
@@ -867,6 +998,7 @@
           sourceQuestion: srcLabel,
           destQuestion: dstLabel,
           reason: metaS4.alasan || `"${cleanSrcInd}" berkaitan dengan "${cleanDstInd}".`,
+          recommendation: metaS4.rekomendasi || (jk && jk.sasaran4Justifikasi && jk.sasaran4Justifikasi[`${r.source}_${r.target}`]?.rekomendasi) || "",
           refs: [`Sel: ${r.sourceCell}; Kolom: ${r.relationColumn}`]
         });
       }
@@ -909,12 +1041,12 @@
           const dstSubindikator = (subDst && subDst.subindikator) ? subDst.subindikator : "";
 
           const metaS5 = (jk && typeof jk.classifySasaran5 === "function")
-            ? jk.classifySasaran5(src.group, dst.group, src.inst, dst.inst, src.code, dst.code, src.question, dst.question)
+            ? jk.classifySasaran5(src.group, dst.group, src.inst, dst.inst, src.code, dst.code, src.question, dst.question, subSrc, subDst)
             : {
-                jenis: "Mendukung",
-                status: null,
-                alasan: (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : "")
-              };
+              jenis: "Mendukung",
+              status: null,
+              alasan: (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : "")
+            };
 
           if (state.rtype && metaS5.jenis !== state.rtype) continue;
 
@@ -950,6 +1082,7 @@
             sourceQuestion: src.question,
             destQuestion: dst.question,
             reason: metaS5.alasan || (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : (src.question ? `"${src.question}"` : (dst.question ? `"${dst.question}"` : `Keterkaitan substantif antara ${src.group} dan ${dst.group}.`))),
+            recommendation: metaS5.rekomendasi || "Disarankan koordinasi operasional berkelanjutan dan pertukaran informasi hasil evaluasi antar-pengelola instrumen pelayanan publik.",
             refs: l.cells || []
           });
         }
@@ -1038,7 +1171,8 @@
           destData: subDst,
           sourceQuestion: srcName,
           destQuestion: dstName,
-          reason: r.alasan || `Indikator "${srcName}" berkaitan dengan "${dstName}".`,
+          reason: (jk && jk.sasaran3Justifikasi && (jk.sasaran3Justifikasi[`${srcCode}_${dstCode}`]?.alasan || jk.sasaran3Justifikasi[r.id]?.alasan)) || r.alasan || `Indikator "${srcName}" berkaitan dengan "${dstName}".`,
+          recommendation: (jk && jk.sasaran3Justifikasi && (jk.sasaran3Justifikasi[`${srcCode}_${dstCode}`]?.rekomendasi || jk.sasaran3Justifikasi[r.id]?.rekomendasi)) || r.rekomendasi || "Disarankan menyelaraskan hasil evaluasi kedua indikator yang dibandingkan.",
           refs: [r.sumber || "Bahan paparan Kamis (30092026) (1).xlsx, Copy of Sasaran 3"]
         });
       }
@@ -1054,7 +1188,13 @@
       if (state.component) {
         const allS3 = state.activeMenu === "internal" &&
           Number(state.internalSasaranId) === 3 && state.source === "ALL";
-        if (x.source !== state.component && (!allS3 || x.dest !== state.component)) return false;
+        if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4) {
+          if (x.sourceAspek !== state.component && x.sourceKelompok !== state.component && x.source !== state.component && x.sourceCode !== state.component) {
+            return false;
+          }
+        } else {
+          if (x.source !== state.component && (!allS3 || x.dest !== state.component)) return false;
+        }
       }
       if (state.dest && x.destInst !== state.dest) return false;
       if (!q) return true;
@@ -1083,20 +1223,27 @@
   function groupRelations(rows) {
     const byPair = new Map();
     for (const r of rows) {
-      const key = `${r.source}\u241f${r.destInst}\u241f${r.dest}`;
+      const isS4 = (r.sourceSasaran === 4 && r.targetSasaran === 4);
+      // Untuk Sasaran 4, setiap relasi adalah 1 pasangan unik indikator KK dan indikator pembanding (total 168)
+      const key = isS4
+        ? `${r.sourceCode}\u241f${r.destCode}`
+        : `${r.source}\u241f${r.destInst}\u241f${r.dest}`;
       if (!byPair.has(key)) {
         byPair.set(key, {
           source: r.source,
+          sourceCode: r.sourceCode,
           sourceName: r.sourceName,
           sourceInst: r.sourceInst,
           sourceSasaran: r.sourceSasaran,
           sourceSasaranName: r.sourceSasaranName,
           sourceInstName: r.sourceInstName,
           sourceAspek: r.sourceAspek,
+          sourceKelompok: r.sourceKelompok || r.source,
           sourceIndikator: r.sourceIndikator,
           sourceSubindikator: r.sourceSubindikator,
           destInst: r.destInst,
           dest: r.dest,
+          destCode: r.destCode,
           destName: r.destName,
           destSasaran: r.targetSasaran,
           destSasaranName: r.destSasaranName,
@@ -1134,22 +1281,44 @@
       state.activeMenu === "external" ? "Semua Instrumen Sumber" : null
     );
 
-    const comps = sourceComponents();
-    fillSelect(
-      dom.selectComponent,
-      comps.map(x => ({
-        value: x.id,
-        // Pilihan native tidak lagi melebar ekstrem untuk 92 butir kuesioner.
-        label: Number(state.internalSasaranId) === 3 && state.activeMenu === "internal"
-          ? `${state.source === "ALL" ? x.inst + " · " : ""}${x.name.length > 75 ? x.name.slice(0, 72).trimEnd() + "…" : x.name}`
-          : x.name
-      })),
-      state.component,
-      Number(state.internalSasaranId) === 3 && state.activeMenu === "internal"
-        ? (state.source === "ALL" ? "Semua Indikator & Pertanyaan Survei"
-          : state.source === "IIIP" ? "Semua Pertanyaan Survei" : "Semua Indikator Desain")
-        : "Semua Indikator"
-    );
+    const isS4InternalComp = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+    if (isS4InternalComp) {
+      const s4FilterItems = [
+        { value: "Ketepatan Fungsi", label: "Aspek: Ketepatan Fungsi (49 relasi)" },
+        { value: "1. Mandat (Core Function)", label: "  ↳ 1. Mandat (Core Function)" },
+        { value: "2. Distribusi Kewenangan", label: "  ↳ 2. Distribusi Kewenangan" },
+        { value: "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung", label: "  ↳ 3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung" },
+        { value: "Ketepatan Ukuran", label: "Aspek: Ketepatan Ukuran (35 relasi)" },
+        { value: "1. Rentang Kendali", label: "  ↳ 1. Rentang Kendali" },
+        { value: "2. Departemensi (Pembidangan)", label: "  ↳ 2. Departemensi (Pembidangan)" },
+        { value: "Ketepatan Proses", label: "Aspek: Ketepatan Proses (49 relasi)" },
+        { value: "1. Proses Bisnis", label: "  ↳ 1. Proses Bisnis" },
+        { value: "2. Proses Pengambilan Keputusan", label: "  ↳ 2. Proses Pengambilan Keputusan" },
+        { value: "3. Proses Perencanaan", label: "  ↳ 3. Proses Perencanaan" },
+        { value: "Tata Kelola", label: "Aspek: Tata Kelola (35 relasi)" },
+        { value: "1. Sistem Kerja", label: "  ↳ 1. Sistem Kerja" },
+        { value: "2. Budaya Kerja", label: "  ↳ 2. Budaya Kerja" },
+        { value: "3. Pengendalian Risiko", label: "  ↳ 3. Pengendalian Risiko" }
+      ];
+      fillSelect(dom.selectComponent, s4FilterItems, state.component, "Semua Aspek & Kelompok KK");
+    } else {
+      const comps = sourceComponents();
+      fillSelect(
+        dom.selectComponent,
+        comps.map(x => ({
+          value: x.id,
+          // Pilihan native tidak lagi melebar ekstrem untuk 92 butir kuesioner.
+          label: Number(state.internalSasaranId) === 3 && state.activeMenu === "internal"
+            ? `${state.source === "ALL" ? x.inst + " · " : ""}${x.name.length > 75 ? x.name.slice(0, 72).trimEnd() + "…" : x.name}`
+            : x.name
+        })),
+        state.component,
+        Number(state.internalSasaranId) === 3 && state.activeMenu === "internal"
+          ? (state.source === "ALL" ? "Semua Indikator & Pertanyaan Survei"
+            : state.source === "IIIP" ? "Semua Pertanyaan Survei" : "Semua Indikator Desain")
+          : "Semua Indikator"
+      );
+    }
 
     const dests = listDestinations();
     fillSelect(
@@ -1159,13 +1328,16 @@
       state.activeMenu === "external" ? "Semua Instrumen Tujuan" : "Semua Indeks Pembanding"
     );
 
-    const standardTypes = [
-      "Mendukung",
-      "Saling Melengkapi",
-      "Beririsan Substansi",
-      "Potensi Tumpang Tindih",
-      "Keselarasan Perencanaan"
-    ];
+    const isS4Internal = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+    const standardTypes = isS4Internal
+      ? ["Mendukung", "Langsung", "Tidak Langsung"]
+      : [
+          "Mendukung",
+          "Saling Melengkapi",
+          "Beririsan Substansi",
+          "Potensi Tumpang Tindih",
+          "Keselarasan Perencanaan"
+        ];
     fillSelect(
       dom.selectRelationType,
       standardTypes.map(t => ({ value: t, label: t })),
@@ -1214,7 +1386,7 @@
       const totalPairs = revisiData?.metadata?.count_group_pairs || 128;
       dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 5:</strong> Satu angka pada sel menunjukkan banyaknya <b>indikator tujuan yang berbeda</b> yang mempunyai setidaknya satu rujukan kode resmi. Kode skala penilaian (1–5) dihitung sebagai satu indikator tujuan dan tidak dijumlahkan berulang. Terdapat <b>${totalPairs} pasangan indikator unik</b> pada keseluruhan Sasaran 5 (<strong>49 pasangan</strong> saat indeks sumber IPP).`;
     } else if (sId === 4) {
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan banyaknya relasi indikator sesuai <b>50 hubungan keterkaitan resmi Sasaran 4</b> antara Kapabilitas Kelembagaan dan 7 indeks pembanding.`;
+      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan banyaknya relasi indikator sesuai <b>168 hubungan keterkaitan resmi Sasaran 4</b> antara Kapabilitas Kelembagaan dan 7 indeks pembanding.`;
     } else if (sId === 3) {
       dom.logicNote.innerHTML = `<strong>Status Data Sasaran 3:</strong> Menggunakan sheet <b>Copy of Sasaran 3</b> dari file <code>Bahan paparan Kamis (30092026) (1).xlsx</code> dengan 2 indeks aktif: <b>Instrumen Pengumpulan Data IIIP</b> (92 pertanyaan) dan <b>Desain IIIP</b> (34 indikator), memetakan <b>72 relasi internal aktual</b> (72 pasangan unik).`;
     }
@@ -1250,87 +1422,270 @@
     const comps = sourceComponents().filter(x => !state.component || x.id === state.component);
     const dests = listDestinations().filter(x => !state.dest || x === state.dest);
 
-    dom.matrixTitle.textContent = sId === 4
-      ? "Matriks Relasi Internal Sasaran 4 — Kapabilitas Kelembagaan"
-      : "Matriks Relasi Internal Sasaran 5 — Pelayanan Publik";
-
+    dom.matrixTitle.textContent = "Matriks Relasi Internal";
     dom.matrixDesc.textContent = sId === 4
-      ? "Memetakan 50 hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dengan 7 indeks pengukuran kinerja & perencanaan. Klik angka > 0 untuk membuka Peta Relasi."
-      : `Sumber: ${state.source} — ${instName(state.source)}. Sel menghitung jumlah indikator tujuan unik yang berelasi, bukan kombinasi kode skala penilaian.`;
+      ? "Sasaran 4 — Kapabilitas Kelembagaan"
+      : "Sasaran 5 — Pelayanan Publik";
 
-    dom.pairCount.textContent = pairs.length.toLocaleString("id-ID");
-    dom.pairUnit.textContent = sId === 4 ? "hubungan keterkaitan" : "pasangan indikator";
+    const heroKpiGrid = dom.stageMatrix ? dom.stageMatrix.querySelector(".hero-kpi-grid") : null;
+    if (sId === 4) {
+      if (heroKpiGrid) {
+        heroKpiGrid.innerHTML = `
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="pairCount">${pairs.length.toLocaleString("id-ID")}</strong>
+              <small id="pairUnit">Hubungan Keterkaitan</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="heroStatAspects">4</strong>
+              <small id="heroStatAspectsUnit">Aspek KK</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong>11</strong>
+              <small>Kelompok KK</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong>24</strong>
+              <small>Indikator KK</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="heroStatComparators">7</strong>
+              <small id="heroStatComparatorsUnit">Indeks Pembanding</small>
+            </div>
+          </div>
+        `;
+      }
+      if (dom.matrixFineprint) {
+        dom.matrixFineprint.innerHTML = `
+          <span class="fineprint-text">
+            ℹ <strong>Keterangan Matriks Relasi Internal Sasaran 4:</strong> Baris menunjukkan aspek Kapabilitas Kelembagaan dan kolom menunjukkan indeks pembanding. Angka dalam sel menunjukkan jumlah pasangan relasi.
+          </span>
+        `;
+      }
+    } else {
+      if (heroKpiGrid) {
+        heroKpiGrid.innerHTML = `
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="pairCount">${pairs.length.toLocaleString("id-ID")}</strong>
+              <small id="pairUnit">Pasangan Indikator</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="heroStatPoints">${sId === 5 ? "128" : "72"}</strong>
+              <small id="heroStatPointsUnit">${sId === 5 ? "Indikator Titik" : "Pertanyaan Survei"}</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="heroStatAspects">${comps.length}</strong>
+              <small id="heroStatAspectsUnit">Aspek</small>
+            </div>
+          </div>
+          <div class="kpi-mini-card kpi-text-only">
+            <div class="kpi-info">
+              <strong id="heroStatComparators">${dests.length}</strong>
+              <small id="heroStatComparatorsUnit">Indeks Pembanding</small>
+            </div>
+          </div>
+        `;
+      }
+      if (dom.matrixFineprint) {
+        dom.matrixFineprint.innerHTML = `
+          <span class="fineprint-text">
+            ℹ <strong>Satuan Penghitungan:</strong> Angka pada sel matriks adalah jumlah <strong>indikator tujuan unik</strong> yang memiliki rujukan tercatat, bukan banyaknya permutasi kombinasi kode indikator skala penilaian.
+          </span>
+        `;
+      }
+    }
 
-    // Header Kolom Matriks
+    // Header Kolom Matriks dengan Icon Instrumen
     const headerColsHtml = dests.map(code => `
       <th title="${esc(instName(code))}">
-        <div style="font-weight: 700; color: var(--navy-dark); font-size: 12px;">${esc(code)}</div>
-        <div style="font-weight: normal; font-size: 9.5px; color: var(--ink-muted); margin-top: 2px; line-height: 1.2;">
-          ${esc(instName(code))}
+        <div class="matrix-col-head-wrap">
+          <span class="matrix-col-icon">${getInstrumentIcon(code)}</span>
+          <div class="matrix-col-code">${esc(code)}</div>
+          <div class="matrix-col-sub">${esc(instName(code))}</div>
         </div>
       </th>
     `).join("");
 
-    // Baris Matriks Indikator Sumber
-    const rowsHtml = comps.map(comp => {
-      let rowTotal = 0;
-      const cellsHtml = dests.map(dstCode => {
-        const matches = pairs.filter(p => p.source === comp.id && p.destInst === dstCode);
-        const cnt = matches.length;
-        rowTotal += cnt;
+    let rowsHtml = "";
 
-        if (cnt > 0) {
+    if (sId === 4) {
+      // Khusus Sasaran 4: 4 Aspek Utama dengan Akordeon/Drilldown ke 11 Kelompok KK
+      rowsHtml = comps.map((asp, idx) => {
+        let rowTotal = 0;
+        const cellsHtml = dests.map(dstCode => {
+          const matches = pairs.filter(p => p.sourceAspek === asp.id && p.destInst === dstCode);
+          const cnt = matches.length;
+          rowTotal += cnt;
+
+          if (cnt > 0) {
+            return `
+              <td class="matrix-cell-active">
+                <div class="matrix-cell-btn" data-mapsrc="${esc(asp.id)}" data-mapinst="${esc(dstCode)}" data-maptype="aspek" role="button" tabindex="0" title="${esc(asp.name)} → ${esc(dstCode)}: ${cnt} hubungan keterkaitan">
+                  <span class="cell-num">${cnt}</span>
+                </div>
+              </td>
+            `;
+          }
+          return `<td><span class="matrix-cell-zero">0</span></td>`;
+        }).join("");
+
+        // Sub-rows untuk setiap kelompok di bawah aspek ini
+        const subRowsHtml = (asp.groups || []).map(grp => {
+          let grpRowTotal = 0;
+          const grpCellsHtml = dests.map(dstCode => {
+            const matches = pairs.filter(p => p.sourceKelompok === grp && p.destInst === dstCode);
+            const cnt = matches.length;
+            grpRowTotal += cnt;
+
+            if (cnt > 0) {
+              return `
+                <td class="matrix-cell-active matrix-subcell-active">
+                  <div class="matrix-cell-btn matrix-cell-subbtn" data-mapsrc="${esc(grp)}" data-mapinst="${esc(dstCode)}" data-maptype="kelompok" role="button" tabindex="0" title="${esc(grp)} → ${esc(dstCode)}: ${cnt} hubungan keterkaitan">
+                    <span class="cell-num">${cnt}</span>
+                  </div>
+                </td>
+              `;
+            }
+            return `<td><span class="matrix-cell-zero">0</span></td>`;
+          }).join("");
+
           return `
-            <td class="matrix-cell-active">
-              <div class="matrix-cell-btn" data-mapsrc="${esc(comp.id)}" data-mapinst="${esc(dstCode)}" role="button" tabindex="0" title="${esc(comp.name)} → ${esc(dstCode)}: ${cnt} indikator tujuan">
-                <span class="cell-num">${cnt}</span>
+            <tr class="matrix-group-subrow matrix-subrow-${idx} hidden" style="background:#f8fafc;">
+              <td class="row-header subrow-header" style="padding-left:26px;">
+                <div class="matrix-row-title-wrap">
+                  <span class="subrow-tree-icon" style="color:#0284c7; font-weight:700; margin-right:4px;">↳</span>
+                  <span class="matrix-subrow-name" style="font-size:11.5px; font-weight:600; color:#334155;">${esc(grp)}</span>
+                </div>
+              </td>
+              ${grpCellsHtml}
+              <td class="matrix-row-total subrow-total" style="font-size:12px; font-weight:600; color:#475569;">${grpRowTotal}</td>
+            </tr>
+          `;
+        }).join("");
+
+        return `
+          <tr class="matrix-aspect-row" data-aspect-idx="${idx}">
+            <td class="row-header aspect-row-header">
+              <div class="matrix-row-title-wrap" style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="matrix-row-icon">${getAspectIcon(asp.name)}</span>
+                  <span class="matrix-row-name" style="font-weight:700;">${esc(asp.name.toUpperCase())}</span>
+                  <span class="badge-sub-count" style="font-size:10px; color:#0369a1; background:#e0f2fe; padding:2px 6px; border-radius:10px; font-weight:600;">${asp.indikatorCount} Indikator</span>
+                </div>
+                <button class="btn-toggle-subrow" data-toggle-idx="${idx}" type="button" title="Buka/Tutup Rincian ${asp.groups ? asp.groups.length : 0} Kelompok">
+                  <span class="toggle-icon">▶</span> Rincian
+                </button>
               </div>
             </td>
-          `;
-        }
-        return `<td><span class="matrix-cell-zero">0</span></td>`;
+            ${cellsHtml}
+            <td class="matrix-row-total aspect-row-total" style="font-weight:800;">${rowTotal}</td>
+          </tr>
+          ${subRowsHtml}
+        `;
       }).join("");
+    } else {
+      // Sasaran 5 dan lainnya
+      rowsHtml = comps.map(comp => {
+        let rowTotal = 0;
+        const cellsHtml = dests.map(dstCode => {
+          const matches = pairs.filter(p => p.source === comp.id && p.destInst === dstCode);
+          const cnt = matches.length;
+          rowTotal += cnt;
 
-      return `
-        <tr>
-          <td class="row-header">
-            <div>${esc(comp.name)}</div>
-            <div class="row-inst-meta">${esc(comp.inst)} · Sasaran ${sId}</div>
-          </td>
-          ${cellsHtml}
-          <td style="font-weight: 700; color: var(--navy-dark); background: #f8fafc;">${rowTotal}</td>
-        </tr>
-      `;
-    }).join("");
+          if (cnt > 0) {
+            return `
+              <td class="matrix-cell-active">
+                <div class="matrix-cell-btn" data-mapsrc="${esc(comp.id)}" data-mapinst="${esc(dstCode)}" role="button" tabindex="0" title="${esc(comp.name)} → ${esc(dstCode)}: ${cnt} indikator tujuan">
+                  <span class="cell-num">${cnt}</span>
+                </div>
+              </td>
+            `;
+          }
+          return `<td><span class="matrix-cell-zero">0</span></td>`;
+        }).join("");
+
+        return `
+          <tr>
+            <td class="row-header">
+              <div class="matrix-row-title-wrap">
+                <span class="matrix-row-icon">${getAspectIcon(comp.name)}</span>
+                <span class="matrix-row-name">${esc(comp.name.toUpperCase())}</span>
+              </div>
+            </td>
+            ${cellsHtml}
+            <td class="matrix-row-total">${rowTotal}</td>
+          </tr>
+        `;
+      }).join("");
+    }
 
     // Baris Total Kolom
     const totalColsHtml = dests.map(dstCode => {
       const colTotal = pairs.filter(p => p.destInst === dstCode).length;
-      return `<td style="font-weight:700; background:#f8fafc; color:var(--navy-dark);">${colTotal}</td>`;
+      return `<td class="matrix-col-total-cell" style="font-weight:800;">${colTotal}</td>`;
     }).join("");
 
     dom.matrixTableContainer.innerHTML = `
       <table class="matrix-table">
         <thead>
           <tr>
-            <th class="col-corner">Indikator Sumber (Baris) \\ Indeks Pembanding (Kolom)</th>
+            <th class="col-corner">
+              <div class="corner-head-wrap">
+                <span class="corner-icon">${ICONS.building}</span>
+                <span>${sId === 4 ? "Aspek KK (Baris) \ Indeks Pembanding (Kolom)" : "Indikator Sumber (Baris) \ Indeks Pembanding (Kolom)"}</span>
+              </div>
+            </th>
             ${headerColsHtml}
-            <th style="background:#f1f5f9; color:var(--navy-dark); width: 45px;">Total</th>
+            <th class="col-total-header">Total</th>
           </tr>
         </thead>
         <tbody>
           ${rowsHtml}
-          <tr style="background:#f1f5f9; font-weight:700;">
-            <td class="row-header" style="background:#e2e8f0; color:var(--navy-dark);">
-              <div>TOTAL INDIKATOR TUJUAN</div>
-              <div class="row-inst-meta">Total Agregasi Unik</div>
+          <tr class="matrix-footer-total-row">
+            <td class="row-header footer-total-header">
+              <div class="matrix-row-title-wrap">
+                <span class="matrix-row-icon">${ICONS.layers}</span>
+                <span>${sId === 4 ? "TOTAL HUBUNGAN KETERKAITAN" : "TOTAL INDIKATOR TUJUAN"}</span>
+              </div>
             </td>
             ${totalColsHtml}
-            <td style="font-weight:800; background:#dbeafe; color:#1e40af; font-size:15px;">${pairs.length}</td>
+            <td class="matrix-grand-total" style="font-weight:800;">${pairs.length}</td>
           </tr>
         </tbody>
       </table>
     `;
+
+    // Pasang Event Handler Toggle Rincian Kelompok
+    dom.matrixTableContainer.querySelectorAll(".btn-toggle-subrow").forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const idx = btn.dataset.toggleIdx;
+        const subrows = dom.matrixTableContainer.querySelectorAll(`.matrix-subrow-${idx}`);
+        const isHidden = subrows.length > 0 && subrows[0].classList.contains("hidden");
+        subrows.forEach(r => {
+          if (isHidden) {
+            r.classList.remove("hidden");
+          } else {
+            r.classList.add("hidden");
+          }
+        });
+        btn.innerHTML = isHidden ? `<span class="toggle-icon">▼</span> Tutup` : `<span class="toggle-icon">▶</span> Rincian`;
+        btn.classList.toggle("active", isHidden);
+      };
+    });
 
     // Pasang Event Handler Klik Sel Matriks
     dom.matrixTableContainer.querySelectorAll("[data-mapsrc]").forEach(btn => {
@@ -1339,13 +1694,30 @@
         state.chosenInst = btn.dataset.mapinst;
         state.chosenDest = "";
         state.focusRelation = null;
+        if (Number(state.internalSasaranId) === 4) {
+          state.s4MacroView = false;
+        }
         setStage("graph");
       };
     });
 
-    dom.topbarSummaryText.textContent = sId === 4
-      ? `Sasaran 4: ${pairs.length} Hubungan Keterkaitan Aktif`
-      : `Sasaran 5: ${pairs.length} Pasangan Indikator (${state.source})`;
+    dom.matrixTableContainer.querySelectorAll(".matrix-cell-active").forEach(td => {
+      const btn = td.querySelector("[data-mapsrc]");
+      if (btn) {
+        td.style.cursor = "pointer";
+        td.onclick = (e) => {
+          if (e.target !== btn && !btn.contains(e.target)) {
+            btn.click();
+          }
+        };
+      }
+    });
+
+    if (dom.topbarSummaryText) {
+      dom.topbarSummaryText.textContent = sId === 4
+        ? `Sasaran 4: ${pairs.length} Hubungan Keterkaitan (KK)`
+        : `Sasaran 5: ${pairs.length} Pasangan Indikator (${state.source})`;
+    }
   }
 
   function renderSasaran3Matrix() {
@@ -2030,6 +2402,16 @@
       !isS3 || !state.s3SelectedSurveyQuestion || r.dest === state.s3SelectedSurveyQuestion
     );
     let pairs = groupRelations(allFiltered);
+    const isS4 = state.activeMenu === "internal" && Number(state.internalSasaranId) === 4;
+    // Jika dipilih sel tertentu dari matriks (chosenSrc atau chosenInst terisi), langsung tampilkan Peta Detail (Screenshot 1)
+    if (isS4 && (state.chosenSrc || state.chosenInst)) {
+      state.s4MacroView = false;
+    }
+    if (isS4 && state.s4MacroView !== false) {
+      renderSasaran4MindMap(allFiltered);
+      return;
+    }
+
     const s3DesignOptions = isS3 ? [...new Map((relasiInternal.sasaran3?.relasi || []).map(r => [
       r.tujuan_kode,
       { id: r.tujuan_kode, name: r.tujuan_nama }
@@ -2047,9 +2429,32 @@
     if (dom.graphToolbar) {
       dom.graphToolbar.style.display = "flex";
       const lineModeControls = dom.graphToolbar.querySelector(".graph-display-mode-group");
-      // Khusus S3 garis hanya tampak saat hover; tombol 'Semua Garis'
-      // disembunyikan agar tidak berlawanan dengan perilaku ini.
-      if (lineModeControls) lineModeControls.style.display = isS3 ? "none" : "flex";
+      // Khusus S3 dan S4 garis terfokus; tombol 'Semua Garis' disembunyikan agar tampilan bersih
+      if (lineModeControls) lineModeControls.style.display = (isS3 || isS4) ? "none" : "flex";
+    }
+
+    if (isS4 && dom.graphToolbar) {
+      dom.graphToolbar.innerHTML = `
+        <div class="graph-inst-tabs" style="display:flex; align-items:center; gap:8px;">
+          <span class="graph-inst-tabs-label">Tampilan Peta Sasaran 4:</span>
+          <button class="btn btn-sm ${state.s4MacroView !== false ? 'btn-primary active' : 'btn-outline-secondary'}" id="btnS4MacroToggle">🌿 Peta Makro (7 Indeks)</button>
+          <button class="btn btn-sm ${state.s4MacroView === false ? 'btn-primary active' : 'btn-outline-secondary'}" id="btnS4DetailToggle">🕸 Peta Detail (Indikator)</button>
+        </div>
+      `;
+      const btnMacro = dom.graphToolbar.querySelector("#btnS4MacroToggle");
+      const btnDetail = dom.graphToolbar.querySelector("#btnS4DetailToggle");
+      if (btnMacro && btnDetail) {
+        btnMacro.onclick = () => {
+          state.s4MacroView = true;
+          state.chosenSrc = "";
+          state.chosenInst = "";
+          renderStageGraph();
+        };
+        btnDetail.onclick = () => {
+          state.s4MacroView = false;
+          renderStageGraph();
+        };
+      }
     }
 
     if (dom.btnGraphModeFocus && dom.btnGraphModeAll) {
@@ -2167,10 +2572,17 @@
     // Tentukan pasangan aktif berdasarkan pilihan sel matriks (state.chosenSrc dan/atau state.chosenInst)
     let activePairs = pairs;
     if (state.chosenSrc || state.chosenInst) {
-      const filtered = pairs.filter(p =>
-        (!state.chosenSrc || p.source === state.chosenSrc) &&
-        (!state.chosenInst || p.destInst === state.chosenInst)
-      );
+      const filtered = pairs.filter(p => {
+        let srcMatch = true;
+        if (state.chosenSrc) {
+          srcMatch = (p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc || p.sourceCode === state.chosenSrc);
+        }
+        let instMatch = true;
+        if (state.chosenInst) {
+          instMatch = (p.destInst === state.chosenInst);
+        }
+        return srcMatch && instMatch;
+      });
       if (filtered.length > 0) {
         activePairs = filtered;
       }
@@ -2366,6 +2778,172 @@
     updateContextBanner();
   }
 
+
+  function renderSasaran4MindMap(allFiltered) {
+    dom.stageMatrix.classList.add("hidden");
+    dom.stageGraph.classList.remove("hidden");
+    dom.stageList.classList.add("hidden");
+
+    if (dom.graphToolbar) {
+      dom.graphToolbar.style.display = "flex";
+      dom.graphToolbar.innerHTML = `
+        <div class="graph-inst-tabs" style="display:flex; align-items:center; gap:8px;">
+          <span class="graph-inst-tabs-label">Tampilan Peta Sasaran 4:</span>
+          <button class="btn btn-sm ${state.s4MacroView !== false ? 'btn-primary active' : 'btn-outline-secondary'}" id="btnS4MacroToggle">🌿 Peta Makro (7 Indeks)</button>
+          <button class="btn btn-sm ${state.s4MacroView === false ? 'btn-primary active' : 'btn-outline-secondary'}" id="btnS4DetailToggle">🕸 Peta Detail (Indikator)</button>
+        </div>
+      `;
+      const btnMacro = dom.graphToolbar.querySelector("#btnS4MacroToggle");
+      const btnDetail = dom.graphToolbar.querySelector("#btnS4DetailToggle");
+      if (btnMacro && btnDetail) {
+        btnMacro.onclick = () => {
+          state.s4MacroView = true;
+          state.chosenSrc = "";
+          state.chosenInst = "";
+          renderStageGraph();
+        };
+        btnDetail.onclick = () => {
+          state.s4MacroView = false;
+          renderStageGraph();
+        };
+      }
+    }
+
+    // Set KPI banner stats matching bottom-left screenshot
+    dom.mapTotal.textContent = allFiltered ? allFiltered.length.toString() : "168";
+    dom.mapUnit.textContent = "Hubungan";
+    if (dom.graphInstCount) {
+      dom.graphInstCount.textContent = "8";
+      if (dom.graphInstCountUnit) dom.graphInstCountUnit.textContent = "Indeks";
+    }
+    dom.graphTitle.textContent = "Peta Relasi";
+    dom.graphDesc.textContent = "Visualisasi hubungan indikator antar indeks pada Sasaran 4 — Kapabilitas Kelembagaan";
+
+    // Hitung counts per instrumen tujuan
+    const instCounts = { IPPN: 0, CKKP: 0, SPIP: 0, SAKIP: 0, ELPPD: 0, IKPA: 0, IPA: 0 };
+    allFiltered.forEach(r => {
+      let c = r.destInst;
+      if (!c && r.destCode) c = r.destCode.split('.')[0].replace('SS4-', '');
+      if (!c && r.dest) c = r.dest.split('.')[0].replace('SS4-', '');
+      if (c && instCounts.hasOwnProperty(c)) {
+        instCounts[c] += (r.items ? r.items.length : 1);
+      }
+    });
+
+    // Render Kolom Sumber (KK)
+    dom.colSourceTitle.textContent = "Indeks Sumber";
+    dom.colSourceCount.textContent = "1 Indeks";
+    dom.containerSourceCards.innerHTML = `
+      <div class="macro-source-card" id="card_src_macro_KK" title="Indeks Sumber: Kapabilitas Kelembagaan (KK)">
+        <div class="macro-source-icon-wrap">
+          ${ICONS.building}
+        </div>
+        <div class="macro-source-code">KK</div>
+        <div class="macro-source-name">Kapabilitas Kelembagaan</div>
+        <div class="macro-source-sub">(Indeks Sumber)</div>
+        <div class="connection-pin pin-right" id="pin_src_macro_KK"></div>
+      </div>
+    `;
+
+    // Render Kolom Tujuan (7 Instrumen Pembanding)
+    dom.colDestTitle.textContent = "Indeks Pembanding";
+    dom.colDestCount.textContent = "7 Indeks";
+    dom.containerDestCards.innerHTML = `
+      <div class="macro-dst-list">
+        ${S4_MACRO_INSTRUMENTS.map(inst => `
+          <div class="macro-dst-card card-dst-${inst.code.toLowerCase()}"
+               id="card_dst_${inst.code}"
+               data-inst="${inst.code}"
+               title="Klik untuk membuka rincian hubungan dengan ${inst.code} di Tahap 3">
+            <div class="connection-pin pin-left" id="pin_dst_${inst.code}"></div>
+            <div class="macro-dst-body">
+              <span class="macro-dst-icon-box">${getInstrumentIcon(inst.code)}</span>
+              <span class="macro-dst-title"><strong>${inst.code}</strong> — ${inst.name}</span>
+            </div>
+            <span class="macro-dst-badge">${instCounts[inst.code] || 0}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    // Attach click and hover to destination cards
+    dom.containerDestCards.querySelectorAll(".macro-dst-card").forEach(card => {
+      const instCode = card.dataset.inst;
+      card.onclick = () => {
+        state.chosenInst = instCode;
+        state.focusItem = null;
+        setStage("list");
+      };
+      card.onmouseenter = () => {
+        const path = dom.diagramSvg.querySelector(`#curve_macro_${instCode}`);
+        if (path) {
+          path.setAttribute("stroke-width", "4");
+          path.setAttribute("stroke-opacity", "1");
+        }
+      };
+      card.onmouseleave = () => {
+        const path = dom.diagramSvg.querySelector(`#curve_macro_${instCode}`);
+        if (path) {
+          path.setAttribute("stroke-width", "2.5");
+          path.setAttribute("stroke-opacity", "0.9");
+        }
+      };
+    });
+
+    // Draw curves
+    requestAnimationFrame(() => {
+      drawS4MacroCurves();
+    });
+
+    updateContextBanner();
+  }
+
+  function drawS4MacroCurves() {
+    const svgGroup = dom.svgPathGroup;
+    if (!svgGroup || !dom.diagramSvg || typeof dom.diagramSvg.getBoundingClientRect !== "function") return;
+
+    svgGroup.innerHTML = "";
+    const svgRect = dom.diagramSvg.getBoundingClientRect();
+    if (!svgRect || svgRect.width === 0 || svgRect.height === 0) return;
+
+    const pinSrc = document.getElementById("pin_src_macro_KK");
+    if (!pinSrc || typeof pinSrc.getBoundingClientRect !== "function") return;
+    const rectSrc = pinSrc.getBoundingClientRect();
+
+    const x1 = rectSrc.left + rectSrc.width / 2 - svgRect.left;
+    const y1 = rectSrc.top + rectSrc.height / 2 - svgRect.top;
+
+    const pathsHtml = [];
+    S4_MACRO_INSTRUMENTS.forEach(inst => {
+      const pinDst = document.getElementById(`pin_dst_${inst.code}`);
+      if (!pinDst || typeof pinDst.getBoundingClientRect !== "function") return;
+      const rectDst = pinDst.getBoundingClientRect();
+
+      const x2 = rectDst.left + rectDst.width / 2 - svgRect.left;
+      const y2 = rectDst.top + rectDst.height / 2 - svgRect.top;
+
+      const dx = (x2 - x1) * 0.55;
+      const arrowTipX = x2 - 2;
+      const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${arrowTipX} ${y2}`;
+
+      pathsHtml.push(`
+        <path d="${d}"
+              class="relation-curve-macro"
+              id="curve_macro_${inst.code}"
+              data-inst="${inst.code}"
+              stroke="${inst.color}"
+              stroke-width="2.5"
+              fill="none"
+              stroke-opacity="0.9" />
+        <polygon points="${arrowTipX},${y2} ${arrowTipX - 8},${y2 - 4.5} ${arrowTipX - 8},${y2 + 4.5}"
+                 fill="${inst.color}"
+                 fill-opacity="0.9" />
+      `);
+    });
+
+    svgGroup.innerHTML = pathsHtml.join("");
+  }
+
   function drawCurves(pairsToDraw) {
     const svgGroup = dom.svgPathGroup;
     if (!svgGroup || !dom.diagramSvg || typeof dom.diagramSvg.getBoundingClientRect !== "function") return;
@@ -2467,7 +3045,10 @@
       "Saling Melengkapi": "badge-melengkapi",
       "Beririsan Substansi": "badge-beririsan",
       "Potensi Tumpang Tindih": "badge-tumpangtindih",
-      "Keselarasan Perencanaan": "badge-selaras"
+      "Keselarasan Perencanaan": "badge-selaras",
+      "Langsung": "badge-langsung",
+      "Tidak Langsung": "badge-tidak-langsung",
+      "Tidak langsung": "badge-tidak-langsung"
     };
     const cls = map[type] || "badge-unassigned";
     return `<span class="badge ${cls}">${esc(type)}</span>`;
@@ -2495,8 +3076,8 @@
     if (dom.listCountSummary) dom.listCountSummary.textContent = `dari ${nf(baseItems.length)} catatan pada lingkup ini`;
     if (!dom.listTypeOptions) return;
 
-    const order = ["Mendukung", "Saling Melengkapi", "Beririsan Substansi", "Potensi Tumpang Tindih", "Keselarasan Perencanaan"];
-    const types = [...countByType.keys()].sort((a,b) => {
+    const order = ["Mendukung", "Langsung", "Tidak Langsung", "Saling Melengkapi", "Beririsan Substansi", "Potensi Tumpang Tindih", "Keselarasan Perencanaan"];
+    const types = [...countByType.keys()].sort((a, b) => {
       const ia = order.indexOf(a), ib = order.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "id");
     });
@@ -2504,11 +3085,11 @@
     dom.listTypeOptions.innerHTML = `
       <button type="button" class="list-type-chip ${allActive ? 'active' : ''}" data-list-type-all="true" aria-pressed="${allActive}">Semua <span>${nf(baseItems.length)}</span></button>
       ${types.map(type => {
-        const active = chosen.includes(type);
-        return `<button type="button" class="list-type-chip ${active ? 'active' : ''}" data-list-type="${esc(type)}" aria-pressed="${active}" title="${esc(type)} — ${nf(countByType.get(type))} relasi">
+      const active = chosen.includes(type);
+      return `<button type="button" class="list-type-chip ${active ? 'active' : ''}" data-list-type="${esc(type)}" aria-pressed="${active}" title="${esc(type)} — ${nf(countByType.get(type))} relasi">
           ${active ? '<span class="type-tick">✓</span>' : ''}${esc(type)} <span>${nf(countByType.get(type))}</span>
         </button>`;
-      }).join("")}`;
+    }).join("")}`;
     dom.listTypeOptions.querySelector('[data-list-type-all]').onclick = () => {
       state.listTypeFilters = [];
       state.focusItem = null;
@@ -2557,11 +3138,17 @@
 
     let itemsHtml = `
       <div class="compare-info-item">
-        <span class="info-label">Sasaran Strategis</span>
+        <div class="info-label-with-icon">
+          <span class="field-icon">${ICONS.target}</span>
+          <span class="info-label">Sasaran Strategis</span>
+        </div>
         <div class="info-val info-sasaran">${esc(sasaranName)}</div>
       </div>
       <div class="compare-info-item">
-        <span class="info-label">${isSource ? "Indeks Sumber" : "Indeks Pembanding"}</span>
+        <div class="info-label-with-icon">
+          <span class="field-icon">${ICONS.badge}</span>
+          <span class="info-label">${isSource ? "Indeks Sumber" : "Indeks Pembanding"}</span>
+        </div>
         <div class="info-val info-indeks">${esc(s4Config ? s4Config.name : (instFullName || instName(instCode)))}</div>
       </div>
     `;
@@ -2573,7 +3160,10 @@
         const displayAspek = cleanLabel(String(rawAspek).trim());
         itemsHtml += `
           <div class="compare-info-item">
-            <span class="info-label">${esc(s4Config.aspekLabel || "Aspek / Komponen")}</span>
+            <div class="info-label-with-icon">
+              <span class="field-icon">${ICONS.folder}</span>
+              <span class="info-label">${esc(s4Config.aspekLabel || "Aspek / Komponen")}</span>
+            </div>
             <div class="info-val info-aspek">${esc(displayAspek)}</div>
           </div>
         `;
@@ -2585,7 +3175,10 @@
         const displayIndikator = cleanLabel(String(rawIndikator).trim());
         itemsHtml += `
           <div class="compare-info-item">
-            <span class="info-label">${esc(s4Config.indikatorLabel || "Indikator")}</span>
+            <div class="info-label-with-icon">
+              <span class="field-icon">${ICONS.list}</span>
+              <span class="info-label">${esc(s4Config.indikatorLabel || "Indikator")}</span>
+            </div>
             <div class="info-val info-indikator">${esc(displayIndikator)}</div>
           </div>
         `;
@@ -2600,7 +3193,10 @@
       if (namaButir || isiPenjelasanHtml) {
         itemsHtml += `
           <div class="compare-info-item compare-rincian-section">
-            <span class="info-label info-rincian-header">Rincian Indikator</span>
+            <div class="info-label-with-icon info-rincian-header">
+              <span class="field-icon">${isSource ? ICONS.box : ICONS.doc}</span>
+              <span class="info-label">Rincian Indikator</span>
+            </div>
             <div class="rincian-box-wrapper">
               ${jenisButir ? `<span class="rincian-jenis-badge">${esc(jenisButir.toUpperCase())}</span>` : ""}
               ${namaButir ? `<div class="rincian-nama-butir">${esc(namaButir)}</div>` : ""}
@@ -2618,7 +3214,10 @@
       if (aspek && aspek !== "-" && aspek.trim() !== "") {
         itemsHtml += `
           <div class="compare-info-item">
-            <span class="info-label">Aspek / Komponen</span>
+            <div class="info-label-with-icon">
+              <span class="field-icon">${ICONS.folder}</span>
+              <span class="info-label">Aspek / Komponen</span>
+            </div>
             <div class="info-val info-aspek">${esc(cleanLabel(aspek))}</div>
           </div>
         `;
@@ -2626,7 +3225,10 @@
       if (rawIndikator && rawIndikator.trim() !== "") {
         itemsHtml += `
           <div class="compare-info-item">
-            <span class="info-label">Indikator</span>
+            <div class="info-label-with-icon">
+              <span class="field-icon">${ICONS.list}</span>
+              <span class="info-label">Indikator</span>
+            </div>
             <div class="info-val info-indikator">${esc(cleanLabel(rawIndikator))}</div>
           </div>
         `;
@@ -2653,7 +3255,10 @@
       if (rincianFallbackHtml.trim() !== "") {
         itemsHtml += `
           <div class="compare-info-item compare-rincian-section">
-            <span class="info-label info-rincian-header">Rincian Indikator</span>
+            <div class="info-label-with-icon info-rincian-header">
+              <span class="field-icon">${isSource ? ICONS.box : ICONS.doc}</span>
+              <span class="info-label">Rincian Indikator</span>
+            </div>
             <div class="rincian-box-wrapper">
               ${rincianFallbackHtml}
             </div>
@@ -2665,8 +3270,8 @@
     return `
       <div class="compare-col ${sideClass}">
         <div class="compare-col-header">
-          <span class="compare-col-badge">${esc(badgeText)}</span>
-          <span class="compare-col-sasaran">${esc(sasaranName)}</span>
+          <span class="col-hdr-icon">${isSource ? ICONS.layers : ICONS.chart}</span>
+          <span class="compare-col-badge">${esc(badgeText.toUpperCase())}</span>
         </div>
         <div class="compare-info-list">
           ${itemsHtml}
@@ -2693,12 +3298,13 @@
     dom.focusRelationCard.classList.remove("hidden");
     dom.focusRelationCard.innerHTML = `
       <div class="executive-compare-card">
-        <div class="compare-card-header">
-          <div class="compare-card-title-group">
-            <span class="compare-card-tag">Penyandingan Substansi Indikator</span>
-            <h3 class="compare-card-title">${esc(titleText)}</h3>
+        <div class="compare-card-subtitle-bar">
+          <span class="compare-card-icon">${ICONS.link}</span>
+          <div class="compare-card-sub-info">
+            <strong class="compare-card-tag">Penyandingan Substansi Indikator</strong>
+            <span class="compare-card-pair-title">${esc(titleText)}</span>
           </div>
-          <button class="btn btn-sm btn-secondary btn-close-detail" id="btnCloseDetailCard" title="Tutup Detail">
+          <button class="btn btn-sm btn-secondary btn-close-detail" id="btnCloseDetailCard" title="Tutup Detail" style="margin-left:auto;">
             <span>✕ Tutup Detail</span>
           </button>
         </div>
@@ -2708,19 +3314,33 @@
           ${renderCompareColumn("dest", r)}
         </div>
 
-        <!-- Informasi Keterkaitan & Alasan (Menyatu dalam 1 Card di Bawah Kolom) -->
-        <div class="compare-keterkaitan-unified">
-          <div class="keterkaitan-header-row">
-            <div class="keterkaitan-badges-group">
-              <span class="keterkaitan-label">Informasi Keterkaitan:</span>
+        <!-- Informasi Keterkaitan & Alasan (Split 2 Box persis screenshot) -->
+        <div class="compare-keterkaitan-split">
+          <div class="keterkaitan-box-type">
+            <div class="keterkaitan-box-header">
+              <span class="keterkaitan-icon">${ICONS.link}</span>
+              <span class="keterkaitan-title">Informasi Keterkaitan</span>
+            </div>
+            <div class="keterkaitan-badge-wrap">
               ${renderTypeBadge(r.type)}
-              ${(Number(r.sourceSasaran) === 4 || Number(r.targetSasaran) === 4 || Number(r.sourceSasaran) === 1 || state.activeMenu === "external") ? "" : (r.level ? `<span class="badge badge-status">${esc(r.level)}</span>` : "")}
-              ${r.tingkat ? renderTingkatBadge(r.tingkat) : ""}
             </div>
           </div>
-          <div class="keterkaitan-reason-box">
-            <span class="info-label">Alasan atau Justifikasi Substantif:</span>
-            <p class="keterkaitan-reason-text">${esc(r.reason)}</p>
+          <div class="keterkaitan-box-reason">
+            <div class="keterkaitan-sub-section">
+              <div class="keterkaitan-box-header">
+                <span class="keterkaitan-icon">${ICONS.target}</span>
+                <span class="keterkaitan-title">Alasan / Justifikasi Substantif</span>
+              </div>
+              <p class="keterkaitan-reason-text">${esc(r.reason || "Keterkaitan substantif terverifikasi.")}</p>
+            </div>
+
+            <div class="keterkaitan-sub-section keterkaitan-recom-section">
+              <div class="keterkaitan-box-header">
+                <span class="keterkaitan-icon">${ICONS.shield}</span>
+                <span class="keterkaitan-title">Rekomendasi Tindak Lanjut</span>
+              </div>
+              <p class="keterkaitan-reason-text keterkaitan-recom-text">${esc(r.recommendation || r.rekomendasi || "Rekomendasi belum tersedia.")}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2746,7 +3366,7 @@
     let itemsToDisplay = [];
 
     if (state.chosenDest) {
-      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc));
+      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
       if (activePair) {
         itemsToDisplay = activePair.items;
         dom.listTitle.textContent = `Detail Relasi: ${cleanLabel(activePair.sourceName)} → ${cleanLabel(activePair.destName)}`;
@@ -2758,7 +3378,7 @@
       }
     } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
       const matchedPairs = pairs.filter(p =>
-        (!state.chosenSrc || p.source === state.chosenSrc) &&
+        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc) &&
         (!state.chosenInst || p.destInst === state.chosenInst)
       );
       if (matchedPairs.length > 0) {
@@ -2790,7 +3410,7 @@
     if (state.focusItem && !itemsToDisplay.some(r => r.id === state.focusItem.id)) state.focusItem = null;
 
     // Auto-focus if user came from clicking a card in Stage 2 or if only a single pair is selected
-    if (state.chosenDest && itemsToDisplay.length > 0 && !state.focusItem) {
+    if ((state.chosenDest || state.chosenInst || Number(state.internalSasaranId) === 4) && itemsToDisplay.length > 0 && !state.focusItem) {
       state.focusItem = itemsToDisplay[0];
     }
 
@@ -2810,7 +3430,7 @@
       } else if (Number(state.internalSasaranId) === 3) {
         dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 3:</strong> Menampilkan penyandingan substansi antara Instrumen Pengumpulan Data Survei IIIP dan Desain IIIP berdasarkan sheet <code>Copy of Sasaran 3</code>. Pilih <em>Lihat Detail</em> untuk menelaah rincian indikator, pertanyaan, dan justifikasi keterkaitan secara utuh.`;
       } else {
-        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> Menampilkan 50 hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
+        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> Menampilkan 168 hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
       }
     }
 
@@ -2845,7 +3465,7 @@
           <td>
             <div class="table-cell-substance">
               <div class="cell-main-title">${esc(cleanLabel(r.destIndikator))}</div>
-              ${r.destAspek ? `<div class="cell-aspek-text">Aspek: ${esc(cleanLabel(r.destAspek))}</div>` : ""}
+              ${r.destAspek ? `<div class="cell-aspek-text">${r.destInst === "CKKP" ? "Kategori: " : "Aspek: "}${esc(cleanLabel(r.destAspek))}</div>` : ""}
               <div class="cell-sub-pills">
                 <span class="cell-pill">${esc(r.destInstName)}</span>
                 <span class="cell-pill-sasaran">${esc(r.destSasaranName)}</span>
@@ -2933,7 +3553,7 @@
 
     if (stage === "matrix") {
       if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 3 &&
-          previousStage !== "matrix" && state.s3GraphPickedIndicator && state.s3SelectedIndicator) {
+        previousStage !== "matrix" && state.s3GraphPickedIndicator && state.s3SelectedIndicator) {
         if (state.source !== "ALL") state.source = "DIIIP";
         state.component = state.s3SelectedIndicator;
         state.dest = "IIIP";
@@ -2981,6 +3601,23 @@
 
     updateBreadcrumbs();
 
+    if (dom.pageHeadingTitle && dom.pageHeadingSubtitle) {
+      if (stage === "matrix") {
+        dom.pageHeadingTitle.textContent = state.activeMenu === "internal" ? "Matriks Relasi Internal" : "Matriks Relasi Eksternal";
+        dom.pageHeadingSubtitle.textContent = state.activeMenu === "internal"
+          ? (getSasaranInfo(state.internalSasaranId)?.kode + " — " + getSasaranInfo(state.internalSasaranId)?.nama_singkat)
+          : "Pemetaan Relasi Lintas Sasaran Strategis";
+      } else if (stage === "graph") {
+        dom.pageHeadingTitle.textContent = "Peta Relasi";
+        dom.pageHeadingSubtitle.textContent = state.activeMenu === "internal"
+          ? ("Visualisasi hubungan indikator antar indeks pada " + (getSasaranInfo(state.internalSasaranId)?.kode + " — " + getSasaranInfo(state.internalSasaranId)?.nama_singkat))
+          : "Visualisasi Alur Rujukan Antar-Sasaran";
+      } else if (stage === "list") {
+        dom.pageHeadingTitle.textContent = "Detail Relasi";
+        dom.pageHeadingSubtitle.textContent = "Rincian hubungan indikator sesuai lingkup terpilih.";
+      }
+    }
+
     if (stage === "matrix") {
       renderStageMatrix();
     } else if (stage === "graph") {
@@ -2992,7 +3629,27 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+
+  function updateTopbarSummary() {
+    if (!dom.topbarSummaryText) return;
+    if (state.activeMenu === "internal") {
+      const sId = Number(state.internalSasaranId);
+      if (sId === 5) {
+        dom.topbarSummaryText.textContent = "Sasaran 5: 49 Pasangan Indikator (IPP)";
+      } else if (sId === 4) {
+        dom.topbarSummaryText.textContent = "Sasaran 4: 168 Hubungan Keterkaitan (KK)";
+      } else if (sId === 3) {
+        dom.topbarSummaryText.textContent = "Sasaran 3: 72 Relasi (IIIP)";
+      } else {
+        dom.topbarSummaryText.textContent = "Sasaran " + sId;
+      }
+    } else {
+      dom.topbarSummaryText.textContent = "Sasaran 1: 1.631 Pasangan Relasi (PEMDI)";
+    }
+  }
+
   function updateBreadcrumbs() {
+    updateTopbarSummary();
     dom.bcMenu.textContent = state.activeMenu === "internal" ? "Relasi Internal" : "Relasi Eksternal";
 
     if (state.activeMenu === "internal") {
@@ -3079,6 +3736,7 @@
         "Status Klasifikasi",
         "Tingkat Keterkaitan (Bila Ada)",
         "Alasan / Keterangan Keterkaitan",
+        "Rekomendasi Tindak Lanjut",
         "Referensi Sel Excel (Audit)",
         "Satuan Penghitungan"
       ];
@@ -3087,11 +3745,11 @@
       const pairs = groupRelations(allFiltered);
       let itemsToExport = [];
       if (state.chosenDest) {
-        const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc));
+        const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
         itemsToExport = activePair ? activePair.items : allFiltered;
       } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
         const matchedPairs = pairs.filter(p =>
-          (!state.chosenSrc || p.source === state.chosenSrc) &&
+          (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc) &&
           (!state.chosenInst || p.destInst === state.chosenInst)
         );
         itemsToExport = matchedPairs.length > 0 ? matchedPairs.flatMap(p => p.items) : allFiltered;
@@ -3112,7 +3770,8 @@
         r.type || "Belum ditetapkan",
         r.level || "Perlu penilaian",
         r.tingkat || "-",
-        r.reason,
+        r.reason || "-",
+        r.recommendation || r.rekomendasi || "Rekomendasi belum tersedia.",
         (r.refs || []).join("; "),
         "Pasangan Kode Indikator"
       ]);
@@ -3339,10 +3998,10 @@
     const subtitle = isExternal
       ? "Orientasi: Sasaran 1 (Transformasi Digital - PEMDI) menuju Sasaran Tujuan 2, 3, 4, dan 5"
       : (Number(state.internalSasaranId) === 3
-          ? "Matriks Keterkaitan Instrumen Sasaran 3: Integritas & Inovasi (Bahan paparan Kamis (30092026) (1).xlsx)"
-          : (Number(state.internalSasaranId) === 4
-              ? "Matriks Keterkaitan Kapabilitas Kelembagaan dan Indeks Pembanding"
-              : `Relasi Kebijakan Internal pada Sasaran ${state.internalSasaranId}`));
+        ? "Matriks Keterkaitan Instrumen Sasaran 3: Integritas & Inovasi (Bahan paparan Kamis (30092026) (1).xlsx)"
+        : (Number(state.internalSasaranId) === 4
+          ? "Matriks Keterkaitan Kapabilitas Kelembagaan dan Indeks Pembanding"
+          : `Relasi Kebijakan Internal pada Sasaran ${state.internalSasaranId}`));
 
     const totalStr = dom.pairCount ? dom.pairCount.textContent : "1.641";
     const metaInfo = `Tanggal Unduh: ${getPdfDate()} | Total Relasi Terpetakan: ${totalStr} Pasangan Indikator`;
@@ -3979,14 +4638,14 @@
     let itemsToExport = allFiltered;
 
     if (state.chosenDest) {
-      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc));
+      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
       if (activePair && activePair.items.length > 0) {
         itemsToExport = activePair.items;
         subtitle = `${activePair.sourceName} -> ${activePair.destName}`;
       }
     } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
       const matchedPairs = pairs.filter(p =>
-        (!state.chosenSrc || p.source === state.chosenSrc) &&
+        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc) &&
         (!state.chosenInst || p.destInst === state.chosenInst)
       );
       if (matchedPairs.length > 0) {
@@ -4015,12 +4674,20 @@
       const dstSas = r.destSasaranName || (r.source_sasaran ? `Sasaran ${r.source_sasaran}` : (isExternal ? "" : `Sasaran ${state.internalSasaranId}`));
 
       const relType = r.relationType || r.type || r.rtype || "Mendukung";
+      let keterkaitanDetail = `[ ${relType} ]`;
+      if (r.reason) {
+        keterkaitanDetail += `\n\nAlasan / Justifikasi:\n${r.reason}`;
+      }
+      const recom = r.recommendation || r.rekomendasi || "";
+      if (recom) {
+        keterkaitanDetail += `\n\nRekomendasi Tindak Lanjut:\n${recom}`;
+      }
 
       return [
         (i + 1).toString(),
         sanitizePdfText(`${srcTitle}\n${srcCodeStr}${srcAspek}[ ${srcInst} ]\n${srcSas}`),
         sanitizePdfText(`${dstTitle}\n${dstCodeStr}${dstAspek}[ ${dstInst} ]\n${dstSas}`),
-        sanitizePdfText(relType)
+        sanitizePdfText(keterkaitanDetail)
       ];
     });
 
@@ -4028,7 +4695,7 @@
     // Distribusi 4 Kolom: No (35 pt), Sumber (320 pt), Pembanding (320 pt), Keterkaitan (106 pt)
     doc.autoTable({
       startY: 124,
-      head: [["No.", "Indikator Sumber", "Indikator Pembanding", "Jenis Keterkaitan"]],
+      head: [["No.", "Indikator Sumber", "Indikator Pembanding", "Keterkaitan, Alasan & Rekomendasi"]],
       body: rows,
       theme: "grid",
       showHead: "everyPage",
@@ -4050,12 +4717,12 @@
         lineWidth: 0.5
       },
       columnStyles: {
-        0: { cellWidth: 35, halign: "center" },
-        1: { cellWidth: 315 },
-        2: { cellWidth: 315 },
-        3: { cellWidth: 106, halign: "center", fontStyle: "bold", textColor: [2, 132, 199] }
+        0: { cellWidth: 30, halign: "center" },
+        1: { cellWidth: 245 },
+        2: { cellWidth: 245 },
+        3: { cellWidth: 261, halign: "left" }
       },
-      didDrawPage: function(data) {
+      didDrawPage: function (data) {
         if (data.pageNumber > 1) {
           doc.setFontSize(8);
           doc.setTextColor(100);
@@ -4209,7 +4876,7 @@
       state.component = e.target.value;
       if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 3) {
         if (state.source === "DIIIP" ||
-            (state.source === "ALL" && state.component.startsWith("SS3-DIIIP"))) {
+          (state.source === "ALL" && state.component.startsWith("SS3-DIIIP"))) {
           state.s3SelectedIndicator = state.component;
           state.s3GraphPickedIndicator = false;
           state.s3SelectedSurveyQuestion = "";

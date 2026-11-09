@@ -1,0 +1,17 @@
+/* Only the paired analysis inside Internal Sasaran 4 detail uses these classes. */
+.s4-analysis-section { padding: 0 24px 24px; color: var(--ink-primary); }
+.s4-analysis-title { margin: 4px 0 16px; font-size: 18px; font-weight: 600; }
+.s4-analysis-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.s4-analysis-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.s4-analysis-card > h3 { margin: 0; padding: 0 0 14px; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 600; color: var(--ink-primary); }
+.s4-analysis-field { padding: 16px 0; }
+.s4-analysis-field + .s4-analysis-field { border-top: 1px solid var(--line); }
+.s4-analysis-field h4 { margin: 0 0 8px; font-size: 12px; line-height: 1.5; font-style: normal; font-weight: 500; text-transform: uppercase; color: var(--ink-muted); }
+.s4-analysis-field p { margin: 0; font-size: 13px; line-height: 1.75; font-style: normal; font-weight: 400; white-space: normal; overflow-wrap: break-word; }
+.s4-analysis-source { margin: 8px 0 0; font-size: 10px; line-height: 1.6; color: var(--ink-muted); overflow-wrap: anywhere; }
+.s4-analysis-empty { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--sky-subtle); color: var(--ink-muted); font-size: 13px; line-height: 1.75; }
+.s4-analysis-record + .s4-analysis-record { border-top: 1px solid var(--line); margin-top: 16px; }
+@media (max-width: 700px) {
+  .s4-analysis-section { padding: 0 16px 16px; overflow-x: auto; }
+  .s4-analysis-grid { min-width: 600px; gap: 12px; }
+}
