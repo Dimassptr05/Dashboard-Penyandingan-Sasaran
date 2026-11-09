@@ -2,7 +2,7 @@
 
 Aplikasi web visualisasi dan analisis matriks relasi antar-sasaran strategis **Reformasi Birokrasi (RB)** — Kementerian Pendayagunaan Aparatur Negara dan Reformasi Birokrasi (PANRB).
 
-Aplikasi ini beroperasi secara **100% mandiri (self-contained & offline)** tanpa memerlukan backend server, Node.js runtime, basis data SQL, atau koneksi internet eksternal. Seluruh dataset indikator, keterkaitan relasi, dan fungsi ekspor PDF telah terintegrasi secara langsung di sisi peramban (*client-side*).
+Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka secara offline. Saat dijalankan melalui Netlify atau server pengembangan, data Sasaran 4 disinkronkan dari Google Sheets, termasuk relasi dan katalog definisi operasional tujuh indeks pembanding. File workbook lokal hanya menjadi acuan struktur; bukan sumber data runtime.
 
 ---
 
@@ -55,11 +55,11 @@ membangun dataset perbandingan tetap berada di `scripts/`; pengujiannya di `test
 
 Aplikasi dapat dijalankan dengan mudah melalui dua cara:
 
-### 1. Buka Langsung Secara Lokal (Offline)
-Cukup klik dua kali berkas `index.html` atau buka melalui browser apa pun (Google Chrome, Microsoft Edge, Mozilla Firefox) menggunakan protokol `file:///`.
+### 1. Mode Offline
+Buka `index.html` langsung melalui protokol `file:///` untuk melihat dataset baseline. Sinkronisasi Google Sheets memerlukan HTTP server.
 
-### 2. Menggunakan Static Web Server / GitHub Pages
-Jika di-host melalui layanan seperti **GitHub Pages**, aktifkan GitHub Pages pada pengaturan repositori (*Settings > Pages > Branch: `main` / `root`*), dan web akan langsung aktif secara publik.
+### 2. Mode Online dan Pengembangan
+Deploy ke Netlify untuk menggunakan Netlify Functions dan sinkronisasi Google Sheets. Untuk pengembangan lokal, jalankan `npm run dev` lalu buka URL yang ditampilkan server. Sasaran 4 membaca relasi serta metadata indeks dari sheet `sasaran4-js`.
 
 ### Pengujian
 
@@ -69,4 +69,5 @@ mengarah ke instalasi Playwright:
 ```powershell
 node tests/test-comparison-s4.cjs
 node tests/test-internal-s4-analysis.cjs
+npm run test:catalog
 ```

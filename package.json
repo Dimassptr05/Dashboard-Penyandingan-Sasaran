@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node scripts/dev-server.js",
     "dev": "node scripts/dev-server.js",
-    "test": "node tests/test-comparison-s4.cjs"
+    "test": "node tests/test-comparison-s4.cjs",
+    "test:catalog": "node tests/test-sasaran4-catalog.cjs"
   },
   "keywords": [
     "reformasi-birokrasi",
@@ -15,4 +16,3 @@
   "author": "Kementerian PANRB",
   "license": "UNLICENSED"
 }
-

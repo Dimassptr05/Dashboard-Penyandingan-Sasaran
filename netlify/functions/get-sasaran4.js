@@ -164,7 +164,7 @@ async function getGoogleAccessToken(clientEmail, privateKey) {
 // 2. Ambil baris data dari Google Sheets API v4
 async function fetchSheetRows(spreadsheetId, sheetName, token, apiKey) {
   const encodedSheet = encodeURIComponent(sheetName);
-  let requestPath = `/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A1:R500?valueRenderOption=UNFORMATTED_VALUE`;
+  let requestPath = `/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A1:CG?valueRenderOption=UNFORMATTED_VALUE`;
   const headers = {};
 
   if (token) {
@@ -298,10 +298,39 @@ function parseSheetRows(rows) {
   const kelompokCounts = {};
   const instCounts = {};
   const jenisCounts = { Langsung: 0, Mendukung: 0, "Tidak Langsung": 0 };
+  const catalog = {};
+  const instrumentColumns = {
+    IPPN: { id: 9, fields: { indikator: 10, sub_indikator: 11, status_penilaian: 12, definisi_operasional: 13 }, hierarchy: ["indikator"] },
+    CKKP: { id: 17, fields: { kategori: 18, indikator: 19, cakupan: 20, definisi_operasional: 21 }, hierarchy: ["kategori", "indikator", "cakupan"] },
+    SPIP: { id: 25, fields: { komponen: 26, unsur: 27, sub_uraian: 28, definisi_operasional: 29 }, hierarchy: ["komponen", "unsur"] },
+    SAKIP: { id: 33, fields: { komponen: 34, sub_komponen: 35, kriteria: 36, definisi_operasional: 37 }, hierarchy: ["komponen", "sub_komponen"] },
+    ELPPD: { id: 41, fields: { aspek: 42, sub_aspek: 43, indikator: 44, definisi_operasional: 45 }, hierarchy: ["aspek", "sub_aspek"] },
+    IKPA: { id: 49, fields: { aspek: 50, indikator: 51, pernyataan: 52, definisi_operasional: 53 }, hierarchy: ["aspek"] },
+    IPA: { id: 58, fields: { sasaran_strategis: 59, parameter: 60, sub_parameter: 61, definisi_operasional: 62 }, hierarchy: ["sasaran_strategis", "parameter"] }
+  };
+  const lastHierarchy = Object.fromEntries(
+    Object.entries(instrumentColumns).map(([code, config]) => [code, Object.fromEntries(config.hierarchy.map(field => [field, ""]))])
+  );
 
   for (let rIdx = headerRowIdx + 1; rIdx < rows.length; rIdx++) {
     const r = rows[rIdx];
     if (!r || r.length === 0) continue;
+
+    for (const [instrument, config] of Object.entries(instrumentColumns)) {
+      const code = String(r[config.id] || "").trim();
+      if (!code.startsWith(`SS4-${instrument}.`)) continue;
+      const fields = {};
+      for (const [field, col] of Object.entries(config.fields)) {
+        const value = String(r[col] || "").trim();
+        if (config.hierarchy.includes(field)) {
+          if (value) lastHierarchy[instrument][field] = value;
+          fields[field] = value || lastHierarchy[instrument][field];
+        } else {
+          fields[field] = value;
+        }
+      }
+      catalog[code] = fields;
+    }
 
     const rawSrcCode = r[colMap.src_code];
     if (!rawSrcCode) continue;
@@ -367,6 +396,7 @@ function parseSheetRows(rows) {
     totalRelations: parsedRelations.length,
     relations: parsedRelations,
     justifikasi: justifikasiMap,
+    catalog,
     summary: {
       aspekCounts,
       kelompokCounts,
@@ -376,6 +406,8 @@ function parseSheetRows(rows) {
   };
 }
 
+exports.parseSheetRows = parseSheetRows;
+
 // 7. Handler Utama Netlify Functions
 exports.handler = async (event, context) => {
   const corsHeaders = {
@@ -383,7 +415,7 @@ exports.handler = async (event, context) => {
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "public, max-age=30, s-maxage=30"
+    "Cache-Control": "no-store, no-cache, must-revalidate"
   };
 
   if (event.httpMethod === "OPTIONS") {
@@ -500,6 +532,7 @@ exports.handler = async (event, context) => {
         totalRelations: parsedData.totalRelations,
         relations: parsedData.relations,
         justifikasi: parsedData.justifikasi,
+        catalog: parsedData.catalog,
         summary: parsedData.summary
       })
     };

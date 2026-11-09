@@ -49,10 +49,13 @@
 
   const definitionHtml = (value, esc) => {
     const definition = String(value || "").trim();
-    return definition && definition !== "-"
-      ? `<div class="rincian-isi-penjelasan"><span class="rincian-penjelasan-label">Definisi Operasional</span>${esc(definition)}</div>`
-      : "";
+    const text = definition && definition !== "-" ? esc(definition) : "Belum tersedia pada spreadsheet.";
+    return `<div class="rincian-isi-penjelasan"><span class="rincian-penjelasan-label">Definisi Operasional</span>${text}</div>`;
   };
+  const dataDefinitionHtml = (d, esc) => definitionHtml(
+    [d.definisi_operasional, d.isi_penjelasan].find(value => value && String(value).trim() !== "-"),
+    esc
+  );
 
   const SASARAN4_CONFIG = {
     KK: {
@@ -75,7 +78,7 @@
       getNamaButir: d => d.sub_indikator,
       getPenjelasanHtml: (d, esc) => {
         let html = "";
-        html += definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc);
+        html += dataDefinitionHtml(d, esc);
         if (d.status_penilaian && d.status_penilaian !== "-") {
           html += `<div class="rincian-status-tag"><span class="status-tag-label">Status Penilaian:</span> <span class="status-tag-val">${esc(d.status_penilaian)}</span></div>`;
         }
@@ -90,7 +93,7 @@
       getIndikator: d => cleanLabel((d && d.indikator) || ""),
       jenisButir: "Cakupan",
       getNamaButir: d => cleanLabel((d && (d.cakupan || d.komponen_penilaian || d.butir_penilaian)) || ""),
-      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc)
+      getPenjelasanHtml: (d, esc) => dataDefinitionHtml(d, esc)
     },
     SPIP: {
       name: "Sistem Pengendalian Intern Pemerintah (SPIP)",
@@ -100,7 +103,7 @@
       getIndikator: d => d.unsur,
       jenisButir: "Sub-Uraian",
       getNamaButir: d => d.sub_uraian,
-      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc)
+      getPenjelasanHtml: (d, esc) => dataDefinitionHtml(d, esc)
     },
     SAKIP: {
       name: "Sistem Akuntabilitas Kinerja Instansi Pemerintah (SAKIP)",
@@ -153,9 +156,9 @@
       getAspek: d => d.sasaran_strategis,
       indikatorLabel: "Parameter",
       getIndikator: d => d.parameter,
-      jenisButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? "Sub-Parameter" : "Parameter",
-      getNamaButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? d.sub_parameter : d.parameter,
-      getPenjelasanHtml: (d, esc) => definitionHtml(d.definisi_operasional, esc) || definitionHtml(d.isi_penjelasan, esc)
+      jenisButir: d => (d.sub_parameter && d.sub_parameter !== "-" && d.sub_parameter.trim() !== "") ? "Sub-Parameter" : "",
+      getNamaButir: d => d.sub_parameter,
+      getPenjelasanHtml: (d, esc) => dataDefinitionHtml(d, esc)
     }
   };
 
@@ -3193,7 +3196,7 @@
       // 3. Rincian Indikator (Jenis Butir -> Nama Butir -> Isi Penjelasan)
       const jenisButir = typeof s4Config.jenisButir === "function" ? s4Config.jenisButir(subData) : s4Config.jenisButir;
       const rawNamaButir = s4Config.getNamaButir ? s4Config.getNamaButir(subData) : "";
-      const namaButir = cleanLabel(String(rawNamaButir || "").trim());
+      const namaButir = String(rawNamaButir || "").trim() === "-" ? "" : cleanLabel(String(rawNamaButir || "").trim());
       const isiPenjelasanHtml = s4Config.getPenjelasanHtml ? s4Config.getPenjelasanHtml(subData, esc) : "";
 
       if (namaButir || isiPenjelasanHtml) {
@@ -5269,6 +5272,10 @@
             window.RB_RELASI_INTERNAL.sasaran3 = relasiInternal.sasaran3;
           }
         } else if (target.key === "s4" && Array.isArray(payload.relations)) {
+          if (window.RB_SUBSTANSI_INDIKATOR && payload.catalog) {
+            Object.assign(window.RB_SUBSTANSI_INDIKATOR, payload.catalog);
+          }
+
           if (sasaranData && Array.isArray(sasaranData.relations)) {
             const nonS4Relations = sasaranData.relations.filter(
               r => !(r.sourceSasaran === 4 && r.targetSasaran === 4)
@@ -5325,7 +5332,7 @@
                   instrument_code: r.destInst || existingDst.instrument_code || "",
                   instrument_name: instName(r.destInst) || existingDst.instrument_name || "",
                   indikator: existingDst.indikator || r.destRincian || "",
-                  sub_indikator: r.destRincian || existingDst.sub_indikator || "",
+                  sub_indikator: existingDst.sub_indikator || r.destRincian || "",
                   pembina: existingDst.pembina || ""
                 };
               }
