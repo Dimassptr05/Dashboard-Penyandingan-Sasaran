@@ -1565,9 +1565,9 @@
           return `
             <tr class="matrix-group-subrow matrix-subrow-${idx} hidden" style="background:#f8fafc;">
               <td class="row-header subrow-header" style="padding-left:26px;">
-                <div class="matrix-row-title-wrap">
-                  <span class="subrow-tree-icon" style="color:#0284c7; font-weight:700; margin-right:4px;">↳</span>
-                  <span class="matrix-subrow-name" style="font-size:11.5px; font-weight:600; color:#334155;">${esc(grp)}</span>
+                <div class="matrix-row-title-wrap" style="display:flex; align-items:center; gap:6px;">
+                  <span class="subrow-tree-icon" style="color:#0284c7; font-weight:700; margin-right:2px;">↳</span>
+                  <span class="matrix-subrow-name">${esc(grp)}</span>
                 </div>
               </td>
               ${grpCellsHtml}
@@ -1579,11 +1579,11 @@
         return `
           <tr class="matrix-aspect-row" data-aspect-idx="${idx}">
             <td class="row-header aspect-row-header">
-              <div class="matrix-row-title-wrap" style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                <div style="display:flex; align-items:center; gap:6px;">
+              <div class="matrix-aspect-header-wrap">
+                <div class="matrix-aspect-info">
                   <span class="matrix-row-icon">${getAspectIcon(asp.name)}</span>
-                  <span class="matrix-row-name" style="font-weight:700;">${esc(asp.name.toUpperCase())}</span>
-                  <span class="badge-sub-count" style="font-size:10px; color:#0369a1; background:#e0f2fe; padding:2px 6px; border-radius:10px; font-weight:600;">${asp.indikatorCount} Indikator</span>
+                  <span class="matrix-aspect-name">${esc(asp.name.toUpperCase())}</span>
+                  <span class="badge-sub-count">${asp.indikatorCount} Indikator</span>
                 </div>
                 <button class="btn-toggle-subrow" data-toggle-idx="${idx}" type="button" title="Buka/Tutup Rincian ${asp.groups ? asp.groups.length : 0} Kelompok">
                   <span class="toggle-icon">▶</span> Rincian

@@ -708,11 +708,11 @@ html, body {
 .matrix-table th.col-corner {
   background: #f1f5f9;
   text-align: left;
-  width: 170px;
-  min-width: 140px;
-  max-width: 190px;
-  padding: 8px 10px;
-  font-size: 11px;
+  width: 280px;
+  min-width: 260px;
+  max-width: 340px;
+  padding: 10px 14px;
+  font-size: 11.5px;
   line-height: 1.35;
   white-space: normal;
 }
@@ -726,11 +726,12 @@ html, body {
   left: 0;
   z-index: 10;
   box-shadow: 2px 0 4px rgba(0, 0, 0, 0.02);
-  padding: 8px 10px;
-  width: 170px;
-  max-width: 190px;
+  padding: 10px 14px;
+  width: 280px;
+  min-width: 260px;
+  max-width: 340px;
   font-size: 12px;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .matrix-table td.row-header .row-inst-meta {
@@ -3615,11 +3616,45 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
 }
 
 /* Styling Hierarki Matriks Relasi Internal Sasaran 4 */
+.matrix-aspect-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.matrix-aspect-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.matrix-aspect-name {
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--navy-dark);
+}
+
+.badge-sub-count {
+  font-size: 10.5px;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-block;
+  line-height: 1.2;
+}
+
 .btn-toggle-subrow {
-  background: #f1f5f9;
+  background: #f8fafc;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
-  padding: 3px 8px;
+  padding: 3px 9px;
   font-size: 11px;
   font-weight: 600;
   color: #0284c7;
@@ -3629,6 +3664,7 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
   gap: 4px;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-toggle-subrow:hover,
@@ -3641,6 +3677,7 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
 .matrix-aspect-row td {
   background: #ffffff;
   font-size: 12.5px;
+  padding: 10px 12px;
 }
 
 .matrix-aspect-row:hover td {
@@ -3650,6 +3687,7 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
 .matrix-group-subrow td {
   background: #f8fafc !important;
   border-top: 1px dashed #e2e8f0 !important;
+  padding: 8px 12px;
 }
 
 .matrix-group-subrow:hover td {
@@ -3674,4 +3712,11 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
 
 .subrow-header {
   border-left: 3px solid #0284c7 !important;
+}
+
+.matrix-subrow-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.35;
 }
