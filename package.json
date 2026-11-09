@@ -1,6 +1,6 @@
 {
   "name": "dashboard-relasi-rb-statis",
-  "version": "1.0.0",
+  "version": "1.0.1-dev",
   "description": "Dashboard Relasi Antar-Sasaran Reformasi Birokrasi (Portal Relasi RB)",
   "scripts": {
     "start": "node scripts/dev-server.js",
