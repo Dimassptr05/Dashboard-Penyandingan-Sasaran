@@ -52,7 +52,7 @@ Batas 50 relasi hanya berlaku untuk Relasi Internal Sasaran 4. Pada detailnya, B
 
 ## Isolasi dan pembaruan
 
-`comparison-s4.js`, `comparison-s4.css` dan `data/perbandingan-sasaran4.js` terpisah dari logika/data dashboard utama. Integrasi di `index.html` hanya menambahkan tombol sidebar, stylesheet dan script. Modul tidak menulis ke dataset atau state `__portalRB`. Tidak ada penerapan hasil analisis ke dashboard utama.
+`assets/js/comparison-s4.js`, `assets/css/comparison-s4.css` dan `data/perbandingan-sasaran4.js` terpisah dari logika/data dashboard utama. Integrasi di `index.html` hanya menambahkan tombol sidebar, stylesheet dan script. Modul tidak menulis ke dataset atau state `__portalRB`. Tidak ada penerapan hasil analisis ke dashboard utama.
 
 Untuk memperbarui ekstraksi, gunakan Python dengan `openpyxl`:
 
@@ -68,7 +68,7 @@ Pengujian browser menggunakan Playwright dan Chrome lokal:
 
 ```powershell
 # NODE_PATH menunjuk ke folder node_modules yang berisi playwright.
-node scripts/test-comparison-s4.cjs
+node tests/test-comparison-s4.cjs
 ```
 
 Pengujian memeriksa setiap sel matriks dan kumpulan garis yang dihasilkan, semua detail dan teks analisis, klik indikator/garis, perbedaan klasifikasi, kasus sumber kosong, pencarian, filter, navigasi, tata letak laptop, error JavaScript, isolasi state/data/DOM utama, dan 50 hubungan Sasaran 4 pada dashboard utama. Screenshot pemeriksaan disimpan di folder sementara `rb-comparison-qa`.

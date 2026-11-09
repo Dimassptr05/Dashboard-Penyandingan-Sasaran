@@ -83,6 +83,38 @@ html, body {
   z-index: 50;
 }
 
+.app-layout.sidebar-hidden > .sidebar {
+  display: none;
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--ink-secondary);
+  font: inherit;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.sidebar-toggle:hover {
+  background: var(--sky);
+  color: var(--blue-hover);
+  border-color: var(--blue-primary);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 3px solid var(--blue-primary);
+  outline-offset: 2px;
+}
+
 .brand {
   padding: 24px 20px 20px;
   display: flex;
@@ -2126,6 +2158,7 @@ html, body {
 
   /* Hide navigation, sidebar, filter controls, buttons, and popups */
   .sidebar,
+  .sidebar-toggle,
   .topbar,
   .filter-bar,
   .filter-actions,
@@ -3420,6 +3453,10 @@ body.is-generating-pdf .matrix-cell-btn .cell-num {
 
 /* 1. Breadcrumb Bar */
 .breadcrumb-nav-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   padding: 10px 32px;

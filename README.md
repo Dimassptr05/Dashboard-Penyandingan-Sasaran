@@ -32,23 +32,22 @@ Aplikasi ini beroperasi secara **100% mandiri (self-contained & offline)** tanpa
 
 ```
 .
-├── index.html                           # Tampilan antarmuka utama (UI)
-├── style.css                            # Tata letak responsif & styling tema RB
-├── app.js                              # Logika aplikasi, visualisasi garis, dan event handler
-├── data-sasaran.js                      # Basis data 783 indikator, 17 instrumen, dan relasi utama
-├── data-relasi-internal.js              # Basis data relasi internal resmi (Sasaran 3, 4, 5)
-├── data-relasi-eksternal.js              # Basis data relasi eksternal
-├── data-relasi.js                       # Normalisasi relasi unik Sasaran 5
-├── data/
-│   ├── jenis-keterkaitan.js             # Definisi kategori dan warna jenis keterkaitan
-│   ├── rb-relasi-eksternal-terbaru.js   # Dataset relasi eksternal termutakhir
-│   └── substansi-indikator.js           # Penjelasan substansi per indikator RB
-├── vendor/
-│   ├── html2pdf.bundle.min.js           # Pustaka generasi PDF client-side
-│   ├── jspdf.umd.min.js                 # Mesin PDF jsPDF
-│   └── jspdf.plugin.autotable.min.js    # Plugin tabel untuk jsPDF
+├── index.html                         # Entry point, juga untuk file:// dan GitHub Pages
+├── assets/
+│   ├── css/                            # style.css, comparison-s4.css, internal-s4-analysis.css
+│   └── js/                             # app.js dan comparison-s4.js
+├── data/                               # Dataset utama, data perbandingan, dan audit JSON
+├── docs/
+│   └── PERBANDINGAN-SASARAN4.md        # Metode, sumber, dan batasan data perbandingan
+├── scripts/
+│   └── build-comparison-s4.py          # Membentuk dataset perbandingan dari workbook
+├── tests/                              # Pengujian browser untuk fitur Sasaran 4
+├── vendor/                             # Pustaka pihak ketiga untuk ekspor PDF
 └── README.md
 ```
+
+Dataset utama mencakup 783 indikator dan relasi internal/eksternal. Utilitas untuk
+membangun dataset perbandingan tetap berada di `scripts/`; pengujiannya di `tests/`.
 
 ---
 
@@ -61,3 +60,13 @@ Cukup klik dua kali berkas `index.html` atau buka melalui browser apa pun (Googl
 
 ### 2. Menggunakan Static Web Server / GitHub Pages
 Jika di-host melalui layanan seperti **GitHub Pages**, aktifkan GitHub Pages pada pengaturan repositori (*Settings > Pages > Branch: `main` / `root`*), dan web akan langsung aktif secara publik.
+
+### Pengujian
+
+Pengujian browser memerlukan Playwright dan Chrome lokal. Jalankan dengan `NODE_PATH`
+mengarah ke instalasi Playwright:
+
+```powershell
+node tests/test-comparison-s4.cjs
+node tests/test-internal-s4-analysis.cjs
+```

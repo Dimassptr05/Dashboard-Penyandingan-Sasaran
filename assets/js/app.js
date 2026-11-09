@@ -442,6 +442,8 @@
   // 3. Referensi Elemen DOM
   const dom = {
     // Menu Sidebar
+    appLayout: document.querySelector(".app-layout"),
+    btnSidebarToggle: document.getElementById("btnSidebarToggle"),
     menuInternal: document.getElementById("menuInternal"),
     menuExternal: document.getElementById("menuExternal"),
     sidebarScopeTitle: document.getElementById("sidebarScopeTitle"),
@@ -4794,6 +4796,15 @@
   // 15. Event Listeners
   function initEvents() {
     // Menu Sidebar
+    dom.btnSidebarToggle.onclick = () => {
+      const visible = dom.btnSidebarToggle.getAttribute("aria-expanded") !== "true";
+      dom.appLayout.classList.toggle("sidebar-hidden", !visible);
+      dom.btnSidebarToggle.setAttribute("aria-expanded", String(visible));
+      const label = visible ? "Sembunyikan navigasi" : "Tampilkan navigasi";
+      dom.btnSidebarToggle.setAttribute("aria-label", label);
+      dom.btnSidebarToggle.title = label;
+      window.dispatchEvent(new Event("resize"));
+    };
     dom.menuInternal.onclick = () => setMenu("internal");
     dom.menuExternal.onclick = () => setMenu("external");
 

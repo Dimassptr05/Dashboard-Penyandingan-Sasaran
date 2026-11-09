@@ -14,6 +14,16 @@ const { pathToFileURL } = require('node:url');
   page.on('pageerror', error => errors.push(error.message));
   try {
     await page.goto(pathToFileURL(path.resolve(__dirname, '../index.html')).href);
+    const sidebarToggle = page.locator('#btnSidebarToggle');
+    assert.equal(await sidebarToggle.evaluate(el => el.closest('.breadcrumb-nav-bar') !== null), true);
+    await sidebarToggle.click();
+    assert.equal(await page.locator('.app-layout').evaluate(el => el.classList.contains('sidebar-hidden')), true);
+    assert.equal(await page.locator('#primarySidebar').evaluate(el => getComputedStyle(el).display), 'none');
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await sidebarToggle.isVisible(), true);
+    await sidebarToggle.click();
+    assert.equal(await page.locator('.app-layout').evaluate(el => el.classList.contains('sidebar-hidden')), false);
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'true');
     await page.locator('#selectInternalSasaran').selectOption('4');
     const relations = await page.evaluate(() => window.__portalRB.filteredRelations());
     assert.equal(relations.length, 50);

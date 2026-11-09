@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261109_v10">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261109_v13">
 </head>
 
 <body>
@@ -21,7 +21,7 @@
     <!-- ======================================================== -->
     <!-- SIDEBAR UTAMA (LOGO TETAP SESUAI KETENTUAN USER)        -->
     <!-- ======================================================== -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="primarySidebar">
       <div class="brand brand-clean">
         <div class="brand-info">
           <h1>Portal Relasi RB</h1>
@@ -49,6 +49,10 @@
       <!-- Topbar Header & Breadcrumbs & Stepper -->
       <!-- 1. BREADCRUMB (Posisi Teratas) -->
       <nav class="breadcrumb-nav-bar" aria-label="Breadcrumb">
+        <button class="sidebar-toggle" id="btnSidebarToggle" type="button" aria-controls="primarySidebar"
+          aria-expanded="true" aria-label="Sembunyikan navigasi" title="Sembunyikan navigasi">
+          <span aria-hidden="true">☰</span>
+        </button>
         <div class="breadcrumbs">
           <span class="bc-item">Portal RB</span>
           <span class="bc-sep">›</span>
@@ -558,10 +562,10 @@
   </div>
 
   <!-- Memuat Script Dataset Terlebih Dahulu (Kompatibel Protokol file://) -->
-  <script src="data-sasaran.js?v=20261109_v8"></script>
-  <script src="data-relasi-internal.js?v=20261109_v8"></script>
-  <script src="data-relasi-eksternal.js?v=20261109_v8"></script>
-  <script src="data-relasi.js?v=20261109_v8"></script>
+  <script src="data/data-sasaran.js?v=20261109_v8"></script>
+  <script src="data/data-relasi-internal.js?v=20261109_v8"></script>
+  <script src="data/data-relasi-eksternal.js?v=20261109_v8"></script>
+  <script src="data/data-relasi.js?v=20261109_v8"></script>
   <script src="data/rb-relasi-eksternal-terbaru.js?v=20261109_v8"></script>
   <script src="data/jenis-keterkaitan.js?v=20261109_v8"></script>
   <script src="data/substansi-indikator.js?v=20261109_v8"></script>
@@ -569,7 +573,7 @@
   <script src="vendor/html2pdf.bundle.min.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=20261109_v10"></script>
+  <script src="assets/js/app.js?v=20261109_v12"></script>
 </body>
 
 </html>

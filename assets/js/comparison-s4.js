@@ -30,6 +30,7 @@
   root.hidden = true;
   document.querySelector('.app-layout').append(root);
   const primary = document.querySelector('.main-content:not(.cmp-root)');
+  const sidebarToggle = document.getElementById('btnSidebarToggle');
   const menu = document.getElementById('menuComparisonS4');
   const originalMenus = ['menuInternal', 'menuExternal'].map(id => document.getElementById(id));
 
@@ -286,6 +287,7 @@
   root.addEventListener('focusin', event => highlight(event.target.closest('[data-node]')?.dataset.node));
   root.addEventListener('focusout', () => highlight(null));
   menu.addEventListener('click', () => {
+    root.querySelector('.cmp-breadcrumb').prepend(sidebarToggle);
     primary.classList.add('cmp-primary-hidden');
     root.hidden = false;
     originalMenus.forEach(button => button.classList.remove('active'));
@@ -294,6 +296,7 @@
     root.scrollIntoView({ block: 'start' });
   });
   originalMenus.forEach(button => button.addEventListener('click', () => {
+    document.querySelector('.breadcrumb-nav-bar').prepend(sidebarToggle);
     root.hidden = true;
     primary.classList.remove('cmp-primary-hidden');
     menu.classList.remove('active');
