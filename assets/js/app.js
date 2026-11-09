@@ -5233,8 +5233,18 @@
         res = await fetch(fallback, { cache: "no-cache" });
       }
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+      // Retry sekali otomatis untuk mengatasi transient delay / cold-start serverless
+      if (!res || !res.ok) {
+        await new Promise(r => setTimeout(r, 1200));
+        try {
+          res = await fetch(endpoint, { cache: "no-cache" });
+        } catch (e2) {
+          res = await fetch(fallback, { cache: "no-cache" });
+        }
+      }
+
+      if (!res || !res.ok) {
+        throw new Error(`HTTP ${res ? res.status : "Network Error"}`);
       }
 
       const payload = await res.json();
