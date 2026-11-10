@@ -4408,3 +4408,14 @@ body {
   }
 }
 
+/* 13. State Interaksi Detail & Peta */
+.row-focused {
+  background-color: #f0fdf4 !important;
+  box-shadow: inset 4px 0 0 #10b981 !important;
+}
+
+.relation-curve {
+  cursor: pointer;
+}
+
+

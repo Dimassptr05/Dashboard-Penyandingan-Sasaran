@@ -2768,6 +2768,12 @@
       card.onclick = () => {
         state.chosenDest = destGroupId;
         state.focusRelation = null;
+        const allFilteredNow = filteredRelations();
+        const matchingItems = allFilteredNow.filter(r =>
+          (r.dest === destGroupId || r.destCode === destGroupId) &&
+          (!state.chosenSrc || r.source === state.chosenSrc || r.sourceKelompok === state.chosenSrc || r.sourceAspek === state.chosenSrc || r.sourceCode === state.chosenSrc)
+        );
+        state.focusItem = matchingItems.length > 0 ? matchingItems[0] : null;
         setStage("list");
       };
       card.onmouseenter = () => {
@@ -3043,6 +3049,26 @@
     });
 
     svgGroup.innerHTML = pathsHtml.join("");
+
+    // Event Klik Kurva Hubungan -> Buka Detail Relasi di Tahap 3
+    svgGroup.querySelectorAll(".relation-curve").forEach(curve => {
+      const srcId = curve.dataset.src;
+      const dstId = curve.dataset.dst;
+      curve.style.cursor = "pointer";
+      curve.onclick = (e) => {
+        e.stopPropagation();
+        state.chosenSrc = srcId;
+        state.chosenDest = dstId;
+        state.focusRelation = null;
+        const allFilteredNow = filteredRelations();
+        const matchingItems = allFilteredNow.filter(r =>
+          (r.dest === dstId || r.destCode === dstId) &&
+          (r.source === srcId || r.sourceKelompok === srcId || r.sourceAspek === srcId || r.sourceCode === srcId)
+        );
+        state.focusItem = matchingItems.length > 0 ? matchingItems[0] : null;
+        setStage("list");
+      };
+    });
   }
 
   function renderTypeBadge(type) {
@@ -3360,6 +3386,14 @@
       btnClose.onclick = () => {
         state.focusItem = null;
         dom.focusRelationCard.classList.add("hidden");
+        if (dom.tableRelationBody) {
+          dom.tableRelationBody.querySelectorAll("tr").forEach(tr => tr.classList.remove("row-focused"));
+          dom.tableRelationBody.querySelectorAll(".btn-action-detail").forEach(b => {
+            b.className = "btn btn-sm btn-outline-primary btn-action-detail";
+            const span = b.querySelector("span");
+            if (span) span.textContent = "Lihat Detail";
+          });
+        }
       };
     }
   }
@@ -3375,10 +3409,16 @@
     let itemsToDisplay = [];
 
     if (state.chosenDest) {
-      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
-      if (activePair) {
-        itemsToDisplay = activePair.items;
-        dom.listTitle.textContent = `Detail Relasi: ${cleanLabel(activePair.sourceName)} → ${cleanLabel(activePair.destName)}`;
+      const matchingPairs = pairs.filter(p =>
+        (p.dest === state.chosenDest || p.destCode === state.chosenDest) &&
+        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc || p.sourceCode === state.chosenSrc)
+      );
+      if (matchingPairs.length > 0) {
+        itemsToDisplay = matchingPairs.flatMap(p => p.items);
+        const firstPair = matchingPairs[0];
+        const srcLabel = cleanLabel(firstPair.sourceKelompok || firstPair.sourceName || state.chosenSrc);
+        const dstLabel = cleanLabel(firstPair.destName || firstPair.destIndikator || state.chosenDest);
+        dom.listTitle.textContent = `Detail Relasi: ${srcLabel} → ${dstLabel}`;
         dom.listDesc.textContent = `${itemsToDisplay.length} catatan keterkaitan pada pasangan indikator ini. Menampilkan keterangan substantif dan jenis keterkaitan.`;
       } else {
         itemsToDisplay = allFiltered;
@@ -3387,14 +3427,14 @@
       }
     } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
       const matchedPairs = pairs.filter(p =>
-        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc) &&
+        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc || p.sourceCode === state.chosenSrc) &&
         (!state.chosenInst || p.destInst === state.chosenInst)
       );
       if (matchedPairs.length > 0) {
         itemsToDisplay = matchedPairs.flatMap(p => p.items);
         const rawSrc = state.activeMenu === "internal" && Number(state.internalSasaranId) === 3
           ? (matchedPairs[0]?.sourceName || "Indikator Terpilih")
-          : (state.chosenSrc || (matchedPairs[0] ? matchedPairs[0].sourceName : "Indikator Terpilih"));
+          : (state.chosenSrc || (matchedPairs[0] ? (matchedPairs[0].sourceKelompok || matchedPairs[0].sourceName) : "Indikator Terpilih"));
         const srcLabel = cleanLabel(rawSrc);
         const dstLabel = state.chosenInst ? instName(state.chosenInst) : (matchedPairs[0] ? cleanLabel(matchedPairs[0].destName) : "Indeks Pembanding");
         dom.listTitle.textContent = `Detail Relasi: ${srcLabel} → ${dstLabel}`;
@@ -3417,11 +3457,6 @@
     dom.listDesc.textContent = "Rincian hubungan indikator sesuai lingkup terpilih. Gunakan pilihan jenis keterkaitan untuk menyaring tabel dan hasil ekspor.";
     // Cegah kartu detail lama tetap tampil setelah jenis keterkaitan diganti.
     if (state.focusItem && !itemsToDisplay.some(r => r.id === state.focusItem.id)) state.focusItem = null;
-
-    // Auto-focus if user came from clicking a card in Stage 2 or if only a single pair is selected
-    if ((state.chosenDest || state.chosenInst || Number(state.internalSasaranId) === 4) && itemsToDisplay.length > 0 && !state.focusItem) {
-      state.focusItem = itemsToDisplay[0];
-    }
 
     if (state.focusItem) {
       renderFocusRelationCard(state.focusItem);
@@ -3459,12 +3494,13 @@
     const sample = itemsToDisplay.slice(0, maxShow);
 
     dom.tableRelationBody.innerHTML = sample.map((r, i) => {
+      const isFocused = state.focusItem && state.focusItem.id === r.id;
       return `
-        <tr>
+        <tr class="${isFocused ? 'row-focused' : ''}">
           <td style="font-weight:700; color:#64748b; text-align:center;">${i + 1}</td>
           <td>
             <div class="table-cell-substance">
-              <div class="cell-main-title">${esc(cleanLabel(r.sourceIndikator))}</div>
+              <div class="cell-main-title">${esc(cleanLabel(r.sourceIndikator || r.sourceName))}</div>
               ${r.sourceAspek ? `<div class="cell-aspek-text">Aspek: ${esc(cleanLabel(r.sourceAspek))}</div>` : ""}
               <div class="cell-sub-pills">
                 <span class="cell-pill">${esc(r.sourceInstName)}</span>
@@ -3474,7 +3510,7 @@
           </td>
           <td>
             <div class="table-cell-substance">
-              <div class="cell-main-title">${esc(cleanLabel(r.destIndikator))}</div>
+              <div class="cell-main-title">${esc(cleanLabel(r.destIndikator || r.destName))}</div>
               ${r.destAspek ? `<div class="cell-aspek-text">${r.destInst === "CKKP" ? "Kategori: " : "Aspek: "}${esc(cleanLabel(r.destAspek))}</div>` : ""}
               <div class="cell-sub-pills">
                 <span class="cell-pill">${esc(r.destInstName)}</span>
@@ -3490,8 +3526,8 @@
             </div>
           </td>
           <td style="text-align: center;">
-            <button class="btn btn-sm btn-outline-primary btn-action-detail" data-rel-id="${esc(r.id)}" title="Lihat penyandingan substansi lengkap">
-              <span>Lihat Detail</span> 👁
+            <button class="btn btn-sm ${isFocused ? 'btn-primary' : 'btn-outline-primary'} btn-action-detail" data-rel-id="${esc(r.id)}" title="Lihat penyandingan substansi lengkap">
+              <span>${isFocused ? 'Sedang Dibuka' : 'Lihat Detail'}</span> 👁
             </button>
           </td>
         </tr>
@@ -3508,6 +3544,15 @@
           state.focusItem = targetRel;
           renderFocusRelationCard(targetRel);
           dom.focusRelationCard.scrollIntoView({ behavior: "smooth", block: "start" });
+          dom.tableRelationBody.querySelectorAll("tr").forEach(tr => tr.classList.remove("row-focused"));
+          const tr = btn.closest("tr");
+          if (tr) tr.classList.add("row-focused");
+          dom.tableRelationBody.querySelectorAll(".btn-action-detail").forEach(b => {
+            const isThis = b.dataset.relId === id;
+            b.className = `btn btn-sm ${isThis ? 'btn-primary' : 'btn-outline-primary'} btn-action-detail`;
+            const span = b.querySelector("span");
+            if (span) span.textContent = isThis ? "Sedang Dibuka" : "Lihat Detail";
+          });
         }
       };
     });
@@ -3592,6 +3637,7 @@
         }
       }
     } else if (stage === "graph") {
+      state.focusItem = null;
       if (dom.mainFilterBar) dom.mainFilterBar.classList.remove("hidden");
       dom.step1Btn.classList.add("completed");
       dom.stepLine1.classList.add("active");
@@ -3762,8 +3808,11 @@
       const pairs = groupRelations(allFiltered);
       let itemsToExport = [];
       if (state.chosenDest) {
-        const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
-        itemsToExport = activePair ? activePair.items : allFiltered;
+        const matchingPairs = pairs.filter(p =>
+          (p.dest === state.chosenDest || p.destCode === state.chosenDest) &&
+          (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc || p.sourceCode === state.chosenSrc)
+        );
+        itemsToExport = matchingPairs.length > 0 ? matchingPairs.flatMap(p => p.items) : allFiltered;
       } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
         const matchedPairs = pairs.filter(p =>
           (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc) &&
@@ -4655,10 +4704,13 @@
     let itemsToExport = allFiltered;
 
     if (state.chosenDest) {
-      const activePair = pairs.find(p => p.dest === state.chosenDest && (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc));
-      if (activePair && activePair.items.length > 0) {
-        itemsToExport = activePair.items;
-        subtitle = `${activePair.sourceName} -> ${activePair.destName}`;
+      const matchingPairs = pairs.filter(p =>
+        (p.dest === state.chosenDest || p.destCode === state.chosenDest) &&
+        (!state.chosenSrc || p.source === state.chosenSrc || p.sourceAspek === state.chosenSrc || p.sourceKelompok === state.chosenSrc || p.sourceCode === state.chosenSrc)
+      );
+      if (matchingPairs.length > 0) {
+        itemsToExport = matchingPairs.flatMap(p => p.items);
+        subtitle = `${matchingPairs[0].sourceName} -> ${matchingPairs[0].destName}`;
       }
     } else if ((state.chosenSrc || state.chosenInst) && !state.search) {
       const matchedPairs = pairs.filter(p =>
@@ -5005,6 +5057,7 @@
     dom.step3Btn.onclick = () => {
       const pairs = groupRelations(filteredRelations());
       if (pairs.length > 0 || state.chosenSrc || state.activeStage === "graph" || state.activeStage === "list") {
+        state.focusItem = null;
         setStage("list");
       }
     };
@@ -5022,6 +5075,7 @@
     dom.btnBackToMatrixFromGraph.onclick = () => setStage("matrix");
     dom.btnGoToListFromGraph.onclick = () => {
       state.chosenDest = "";
+      state.focusItem = null;
       setStage("list");
     };
     dom.btnBackToGraphFromList.onclick = () => setStage("graph");
