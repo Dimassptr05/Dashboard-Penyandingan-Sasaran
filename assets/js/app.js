@@ -2711,7 +2711,7 @@
             </div>
             <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(cleanLabel(src.name))}</div>
             <div style="font-size:11px; color:#64748b; margin-top:6px;">
-              ${isS3 && state.s3Compact ? "Indikator terpilih · pilih indikator lain melalui daftar di atas" : (isSelected ? "✓ Sedang difokuskan (klik lagi untuk lepas)" : "Arahkan kursor / klik untuk fokus →")}
+              ${isS3 && state.s3Compact ? "Indikator terpilih · pilih indikator lain melalui daftar di atas" : "Arahkan kursor untuk sorot · Klik rincian di Tahap 3 →"}
             </div>
             <div class="connection-pin" id="pin_src_${esc(src.id)}"></div>
           </div>
@@ -2726,10 +2726,13 @@
         if (isS3 && state.s3Compact) {
           state.s3SelectedIndicator = groupId;
           state.chosenSrc = groupId;
+          renderStageGraph();
         } else {
-          state.chosenSrc = state.chosenSrc === groupId ? "" : groupId;
+          state.chosenSrc = groupId;
+          state.chosenDest = "";
+          state.focusItem = null;
+          setStage("list");
         }
-        renderStageGraph();
       };
       card.onmouseenter = () => {
         highlightSourceCard(groupId);
@@ -2768,12 +2771,7 @@
       card.onclick = () => {
         state.chosenDest = destGroupId;
         state.focusRelation = null;
-        const allFilteredNow = filteredRelations();
-        const matchingItems = allFilteredNow.filter(r =>
-          (r.dest === destGroupId || r.destCode === destGroupId) &&
-          (!state.chosenSrc || r.source === state.chosenSrc || r.sourceKelompok === state.chosenSrc || r.sourceAspek === state.chosenSrc || r.sourceCode === state.chosenSrc)
-        );
-        state.focusItem = matchingItems.length > 0 ? matchingItems[0] : null;
+        state.focusItem = null;
         setStage("list");
       };
       card.onmouseenter = () => {
@@ -3475,7 +3473,10 @@
         dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 3:</strong> Menampilkan penyandingan substansi antara Instrumen Pengumpulan Data Survei IIIP dan Desain IIIP berdasarkan sheet <code>Copy of Sasaran 3</code>. Pilih <em>Lihat Detail</em> untuk menelaah rincian indikator, pertanyaan, dan justifikasi keterkaitan secara utuh.`;
       } else {
         const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
-        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> Menampilkan ${s4Count} hubungan keterkaitan resmi antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
+        const countText = itemsToDisplay.length < s4Count
+          ? `Menampilkan ${itemsToDisplay.length} hubungan keterkaitan terpilih (dari total ${s4Count} hubungan resmi)`
+          : `Menampilkan ${s4Count} hubungan keterkaitan resmi`;
+        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 4:</strong> ${countText} antara Kapabilitas Kelembagaan dan indeks pembanding berdasarkan substansi indikator asli.`;
       }
     }
 
