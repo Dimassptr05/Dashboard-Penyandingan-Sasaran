@@ -234,65 +234,118 @@ function normalizeJenis(rawJenis) {
   return String(rawJenis).trim();
 }
 
+const ASPECT_MAP = {
+  KF: "Ketepatan Fungsi",
+  KU: "Ketepatan Ukuran",
+  KP: "Ketepatan Proses",
+  TK: "Tata Kelola"
+};
+
+const KK_GROUPS = {
+  "KF.1": "1. Mandat (Core Function)",
+  "KF.2": "2. Distribusi Kewenangan",
+  "KF.3": "3. Unsur Pembantu Pemimpin, Unsur Pengawas, dan Unsur Pendukung",
+  "KU.1": "1. Rentang Kendali",
+  "KU.2": "2. Departemensi (Pembidangan)",
+  "KP.1": "1. Proses Perencanaan",
+  "KP.2": "2. Proses Pelaksanaan",
+  "KP.3": "3. Proses Pemantauan, Evaluasi, dan Pengendalian",
+  "TK.1": "1. Standar Operasional Prosedur",
+  "TK.2": "2. Budaya Kerja (Core Values)",
+  "TK.3": "3. Keterbukaan Informasi Publik"
+};
+
+function getKKAspect(code) {
+  if (!code) return "Lainnya";
+  const parts = code.split(".");
+  const p = parts[1] ? parts[1].toUpperCase() : "";
+  return ASPECT_MAP[p] || "Lainnya";
+}
+
+function getKKGroup(code) {
+  if (!code) return "";
+  const parts = code.split(".");
+  if (parts.length >= 3) {
+    const key = `${parts[1]}.${parts[2]}`;
+    return KK_GROUPS[key] || "";
+  }
+  return "";
+}
+
 // 6. Parser Baris Data Google Sheets
 function parseSheetRows(rows) {
   if (!rows || rows.length < 2) return null;
 
-  // Header detection di baris 0 atau 1
-  let headerRowIdx = 0;
-  for (let i = 0; i < Math.min(rows.length, 5); i++) {
-    const r = rows[i].map((c) => String(c || "").toLowerCase());
-    if (r.some((c) => c.includes("indikator kk") || c.includes("id indikator"))) {
-      headerRowIdx = i;
-      break;
-    }
-  }
-
-  const header = rows[headerRowIdx].map((c) => String(c || "").trim().toLowerCase());
+  // Deteksi pemetaan kolom di row 0 sampai 3 (mendukung format lama dan format baru 494)
   const colMap = {
     src_code: -1,
     src_aspek: -1,
     src_kelompok: -1,
     src_ind: -1,
     src_def: -1,
+    dst_kelompok: -1,
     dst_inst: -1,
     dst_code: -1,
     dst_rincian: -1,
     jenis: -1,
+    risiko: -1,
     alasan_edit: -1,
     rekomendasi: -1
   };
 
-  header.forEach((h, idx) => {
-    if (h.includes("id indikator kk")) colMap.src_code = idx;
-    else if (h.includes("aspek kk")) colMap.src_aspek = idx;
-    else if (h.includes("kelompok kk")) colMap.src_kelompok = idx;
-    else if (h.includes("indikator kk")) colMap.src_ind = idx;
-    else if (h.includes("definisi operasional")) colMap.src_def = idx;
-    else if (h.includes("indeks pembanding")) colMap.dst_inst = idx;
-    else if (h.includes("id indikator pembanding")) colMap.dst_code = idx;
-    else if (h.includes("indikator / rincian") || h.includes("rincian pembanding")) colMap.dst_rincian = idx;
-    else if (h.includes("informasi keterkaitan")) colMap.jenis = idx;
-    else if (h.includes("alasan / justifikasi substantif edit")) colMap.alasan_edit = idx;
-    else if (h.includes("perlakuan / to-do") || h.includes("rekomendasi")) colMap.rekomendasi = idx;
-  });
+  let headerRowIdx = 0;
+  for (let rIdx = 0; rIdx < Math.min(rows.length, 3); rIdx++) {
+    const r = rows[rIdx] || [];
+    r.forEach((cell, idx) => {
+      const h = String(cell || "").trim().toLowerCase();
+      if (!h) return;
+      if (colMap.src_code === -1 && (h === "id indikator sumber" || h.includes("id indikator kk") || h === "id indikator")) {
+        colMap.src_code = idx;
+        headerRowIdx = rIdx;
+      } else if (colMap.src_aspek === -1 && (h === "kelompok sumber (level 1)" || h.includes("aspek kk"))) {
+        colMap.src_aspek = idx;
+      } else if (colMap.src_kelompok === -1 && (h === "indeks sumber (level 2)" || h.includes("kelompok kk"))) {
+        colMap.src_kelompok = idx;
+      } else if (colMap.src_ind === -1 && (h === "nama indikator sumber" || h.includes("indikator kk"))) {
+        colMap.src_ind = idx;
+      } else if (colMap.src_def === -1 && h.includes("definisi operasional")) {
+        colMap.src_def = idx;
+      } else if (colMap.dst_kelompok === -1 && h === "kelompok pembanding") {
+        colMap.dst_kelompok = idx;
+      } else if (colMap.dst_inst === -1 && (h === "indeks pembanding" || h.includes("indeks pembanding"))) {
+        colMap.dst_inst = idx;
+      } else if (colMap.dst_code === -1 && (h === "id indikator pembanding" || h.includes("id indikator pembanding"))) {
+        colMap.dst_code = idx;
+      } else if (colMap.dst_rincian === -1 && (h === "nama indikator pembanding" || h.includes("indikator / rincian") || h.includes("rincian pembanding"))) {
+        colMap.dst_rincian = idx;
+      } else if (colMap.jenis === -1 && (h === "jenis keterkaitan" || h.includes("informasi keterkaitan"))) {
+        colMap.jenis = idx;
+      } else if (colMap.risiko === -1 && h.includes("risiko redundansi")) {
+        colMap.risiko = idx;
+      } else if (colMap.alasan_edit === -1 && (h.includes("alasan / justifikasi") || h.includes("alasan relasi"))) {
+        colMap.alasan_edit = idx;
+      } else if (colMap.rekomendasi === -1 && (h.includes("rekomendasi") || h.includes("perlakuan / to-do"))) {
+        colMap.rekomendasi = idx;
+      }
+    });
+  }
 
   // Posisi fallback standar jika header tidak cocok sempurna
-  if (colMap.src_code === -1) colMap.src_code = 1;
-  if (colMap.src_aspek === -1) colMap.src_aspek = 2;
-  if (colMap.src_kelompok === -1) colMap.src_kelompok = 3;
-  if (colMap.src_ind === -1) colMap.src_ind = 4;
-  if (colMap.src_def === -1) colMap.src_def = 5;
-  if (colMap.dst_inst === -1) colMap.dst_inst = 6;
-  if (colMap.dst_code === -1) colMap.dst_code = 7;
-  if (colMap.dst_rincian === -1) colMap.dst_rincian = 8;
-  if (colMap.jenis === -1) colMap.jenis = 9;
-  if (colMap.alasan_edit === -1) colMap.alasan_edit = 11;
-  if (colMap.rekomendasi === -1) colMap.rekomendasi = 17;
+  if (colMap.src_code === -1) colMap.src_code = 70;
+  if (colMap.src_aspek === -1) colMap.src_aspek = 68;
+  if (colMap.src_kelompok === -1) colMap.src_kelompok = 69;
+  if (colMap.src_ind === -1) colMap.src_ind = 71;
+  if (colMap.dst_inst === -1) colMap.dst_inst = 73;
+  if (colMap.dst_code === -1) colMap.dst_code = 74;
+  if (colMap.dst_rincian === -1) colMap.dst_rincian = 75;
+  if (colMap.jenis === -1) colMap.jenis = 76;
+  if (colMap.alasan_edit === -1) colMap.alasan_edit = 78;
+  if (colMap.rekomendasi === -1) colMap.rekomendasi = 79;
 
   let lastAspek = "";
   let lastKelompok = "";
   const parsedRelations = [];
+  const allRelations = [];
   const justifikasiMap = {};
   const aspekCounts = {};
   const kelompokCounts = {};
@@ -312,10 +365,28 @@ function parseSheetRows(rows) {
     Object.entries(instrumentColumns).map(([code, config]) => [code, Object.fromEntries(config.hierarchy.map(field => [field, ""]))])
   );
 
-  for (let rIdx = headerRowIdx + 1; rIdx < rows.length; rIdx++) {
+  for (let rIdx = 1; rIdx < rows.length; rIdx++) {
     const r = rows[rIdx];
     if (!r || r.length === 0) continue;
 
+    // Baca katalog KK dari kolom 0-5
+    const kkCode = String(r[0] || "").trim();
+    if (kkCode.startsWith("SS4-KK.")) {
+      catalog[kkCode] = {
+        code: kkCode,
+        sasaran_id: 4,
+        sasaran_name: "Sasaran 4 — Kapabilitas Kelembagaan",
+        instrument_code: "KK",
+        instrument_name: "Kapabilitas Kelembagaan",
+        aspek: String(r[1] || "").trim() || getKKAspect(kkCode),
+        indikator: String(r[2] || "").trim() || getKKGroup(kkCode),
+        pernyataan: String(r[4] || "").trim(),
+        definisi_operasional: String(r[5] || "").trim(),
+        pembina: "Kementerian PANRB"
+      };
+    }
+
+    // Baca katalog instrumen pembanding
     for (const [instrument, config] of Object.entries(instrumentColumns)) {
       const code = String(r[config.id] || "").trim();
       if (!code.startsWith(`SS4-${instrument}.`)) continue;
@@ -335,9 +406,15 @@ function parseSheetRows(rows) {
     const rawSrcCode = r[colMap.src_code];
     if (!rawSrcCode) continue;
     const srcCode = String(rawSrcCode).trim();
-    if (!srcCode.startsWith("SS4-KK")) continue;
+    if (!srcCode.startsWith("SS4-")) continue;
 
-    // Forward fill struktur pengelompokan
+    const dstCode = r[colMap.dst_code] ? String(r[colMap.dst_code]).trim() : "";
+    if (!dstCode) continue;
+
+    const dstInstRaw = r[colMap.dst_inst] ? String(r[colMap.dst_inst]).trim() : "";
+    const dstInst = normalizeComparatorInst(dstInstRaw, dstCode);
+    const dstRincian = r[colMap.dst_rincian] ? String(r[colMap.dst_rincian]).trim() : "";
+
     const rawAspek = r[colMap.src_aspek];
     if (rawAspek && String(rawAspek).trim()) {
       lastAspek = String(rawAspek).trim();
@@ -348,45 +425,50 @@ function parseSheetRows(rows) {
     }
 
     const srcInd = r[colMap.src_ind] ? String(r[colMap.src_ind]).trim() : "";
-    const srcDef = r[colMap.src_def] ? String(r[colMap.src_def]).trim() : "";
-    const dstInstRaw = r[colMap.dst_inst] ? String(r[colMap.dst_inst]).trim() : "";
-    const dstCode = r[colMap.dst_code] ? String(r[colMap.dst_code]).trim() : "";
-    const dstInst = normalizeComparatorInst(dstInstRaw, dstCode);
-    const dstRincian = r[colMap.dst_rincian] ? String(r[colMap.dst_rincian]).trim() : "";
+    const srcDef = (colMap.src_def !== -1 && r[colMap.src_def]) ? String(r[colMap.src_def]).trim() : (catalog[srcCode]?.definisi_operasional || "");
 
     const jenis = normalizeJenis(r[colMap.jenis]);
-    const alasan = extractAlasanSubstantif(r[colMap.alasan_edit]);
-    const rekomendasi = r[colMap.rekomendasi] ? String(r[colMap.rekomendasi]).trim() : "";
-
-    // Agregasi statistik dinamis
-    aspekCounts[lastAspek] = (aspekCounts[lastAspek] || 0) + 1;
-    kelompokCounts[lastKelompok] = (kelompokCounts[lastKelompok] || 0) + 1;
-    instCounts[dstInst] = (instCounts[dstInst] || 0) + 1;
-    if (jenisCounts[jenis] !== undefined) {
-      jenisCounts[jenis]++;
-    } else {
-      jenisCounts[jenis] = 1;
-    }
+    const alasan = extractAlasanSubstantif(colMap.alasan_edit !== -1 ? r[colMap.alasan_edit] : "");
+    const rekomendasi = (colMap.rekomendasi !== -1 && r[colMap.rekomendasi]) ? String(r[colMap.rekomendasi]).trim() : "";
+    const risiko = (colMap.risiko !== -1 && r[colMap.risiko]) ? String(r[colMap.risiko]).trim() : "";
 
     const pairId = `${srcCode}_${dstCode}`;
-    parsedRelations.push({
+    const relItem = {
       id: pairId,
       row: rIdx + 1,
       sourceCode: srcCode,
-      sourceAspek: lastAspek,
-      sourceKelompok: lastKelompok,
+      sourceAspek: srcCode.startsWith("SS4-KK") ? getKKAspect(srcCode) : lastAspek,
+      sourceKelompok: srcCode.startsWith("SS4-KK") ? getKKGroup(srcCode) : lastKelompok,
       sourceIndikator: srcInd,
       sourceDefinisi: srcDef,
       destInst: dstInst,
       destCode: dstCode,
       destRincian: dstRincian,
       jenis: jenis,
+      risikoRedundansi: risiko,
       alasan: alasan,
       rekomendasi: rekomendasi
-    });
+    };
+
+    allRelations.push(relItem);
+
+    if (srcCode.startsWith("SS4-KK")) {
+      const aspName = relItem.sourceAspek;
+      const grpName = relItem.sourceKelompok;
+      aspekCounts[aspName] = (aspekCounts[aspName] || 0) + 1;
+      kelompokCounts[grpName] = (kelompokCounts[grpName] || 0) + 1;
+      instCounts[dstInst] = (instCounts[dstInst] || 0) + 1;
+      if (jenisCounts[jenis] !== undefined) {
+        jenisCounts[jenis]++;
+      } else {
+        jenisCounts[jenis] = 1;
+      }
+      parsedRelations.push(relItem);
+    }
 
     justifikasiMap[pairId] = {
       jenis: jenis,
+      risiko: risiko,
       alasan: alasan,
       rekomendasi: rekomendasi
     };
@@ -395,13 +477,17 @@ function parseSheetRows(rows) {
   return {
     totalRelations: parsedRelations.length,
     relations: parsedRelations,
+    allRelations: allRelations,
+    totalAllRelations: allRelations.length,
     justifikasi: justifikasiMap,
     catalog,
     summary: {
       aspekCounts,
       kelompokCounts,
       instCounts,
-      jenisCounts
+      jenisCounts,
+      totalKK: parsedRelations.length,
+      totalAll: allRelations.length
     }
   };
 }
@@ -531,6 +617,8 @@ exports.handler = async (event, context) => {
         updatedAt: new Date().toISOString(),
         totalRelations: parsedData.totalRelations,
         relations: parsedData.relations,
+        totalAllRelations: parsedData.totalAllRelations,
+        allRelations: parsedData.allRelations,
         justifikasi: parsedData.justifikasi,
         catalog: parsedData.catalog,
         summary: parsedData.summary

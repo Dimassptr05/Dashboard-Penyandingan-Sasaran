@@ -1648,6 +1648,20 @@
 
     if (dom.selectInternalSasaran) {
       dom.selectInternalSasaran.value = state.internalSasaranId;
+      const optS4 = dom.selectInternalSasaran.querySelector('option[value="4"]');
+      if (optS4) {
+        const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
+        optS4.textContent = s4Count > 0
+          ? `Sasaran 4 — Kapabilitas Kelembagaan (${s4Count} Relasi)`
+          : "Sasaran 4 — Kapabilitas Kelembagaan";
+      }
+      const optS4Dev = dom.selectInternalSasaran.querySelector('option[value="4-dev"]');
+      if (optS4Dev) {
+        const devCount = (window.RB_SASARAN4_DEV?.relations?.length) || (window.RB_SASARAN4_DEV_BASELINE?.relations?.length) || 0;
+        optS4Dev.textContent = devCount > 0
+          ? `Sasaran 4-dev — Relasi Antarindeks (${devCount} Relasi)`
+          : "Sasaran 4-dev — Relasi Antarindeks";
+      }
     }
     if (dom.selectExtSourceSasaran) {
       dom.selectExtSourceSasaran.value = "1";
