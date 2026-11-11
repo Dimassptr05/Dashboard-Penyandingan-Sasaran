@@ -1063,6 +1063,9 @@
         const srcGroupAspek = getS4DevIndicatorGroup(dispSrcId, dispSrcInst);
         const dstGroupAspek = getS4DevIndicatorGroup(dispDstId, dispDstInst);
 
+        const subSrc = getSubstansi(dispSrcId);
+        const subDst = getSubstansi(dispDstId);
+
         matched.push({
           id: `S4DEV_${r.no}_${r.sourceId}_${r.destId}`,
           sasaran: "Sasaran 4-Dev",
@@ -1076,26 +1079,42 @@
           destInstName: instName(dispDstInst),
           source: dispSrcName,
           sourceName: dispSrcName,
-          sourceAspek: srcGroupAspek,
-          sourceKelompok: srcGroupAspek,
+          sourceAspek: (subSrc && subSrc.aspek) || srcGroupAspek,
+          sourceKelompok: (subSrc && (subSrc.indikator || subSrc.komponen)) || srcGroupAspek,
           sourceKelompokLevel1: dispSrcKelompok,
-          sourceIndikator: dispSrcName,
-          sourceSubindikator: `[${dispSrcId}] (${dispSrcInst})`,
+          sourceIndikator: (subSrc && (subSrc.indikator || subSrc.komponen)) || dispSrcName,
+          sourceSubindikator: (subSrc && (subSrc.pernyataan || subSrc.sub_indikator || subSrc.cakupan || subSrc.sub_uraian)) || `[${dispSrcId}] (${dispSrcInst})`,
           dest: dispDstName,
           destName: dispDstName,
-          destAspek: dstGroupAspek,
-          destKelompok: dstGroupAspek,
+          destAspek: (subDst && subDst.aspek) || dstGroupAspek,
+          destKelompok: (subDst && (subDst.indikator || subDst.komponen)) || dstGroupAspek,
           destKelompokLevel1: dispDstKelompok,
-          destIndikator: dispDstName,
-          destSubindikator: `[${dispDstId}] (${dispDstInst})`,
+          destIndikator: (subDst && (subDst.indikator || subDst.komponen)) || dispDstName,
+          destSubindikator: (subDst && (subDst.pernyataan || subDst.sub_indikator || subDst.cakupan || subDst.sub_uraian)) || `[${dispDstId}] (${dispDstInst})`,
           type: r.jenisKeterkaitan,
           level: r.risikoRedundansi,
           tingkat: null,
           codes: [[dispSrcId, dispDstId]],
           sourceCode: dispSrcId,
           destCode: dispDstId,
-          sourceData: { id: dispSrcId, indikator: dispSrcName, aspek: dispSrcKelompok, instrument_name: instName(dispSrcInst) },
-          destData: { id: dispDstId, indikator: dispDstName, aspek: dispDstKelompok, instrument_name: instName(dispDstInst) },
+          sourceData: Object.assign({}, subSrc || {}, {
+            id: dispSrcId,
+            code: dispSrcId,
+            instrument_code: dispSrcInst,
+            instrument_name: instName(dispSrcInst),
+            aspek: (subSrc && subSrc.aspek) || srcGroupAspek,
+            indikator: (subSrc && (subSrc.indikator || subSrc.komponen)) || dispSrcName,
+            kelompok_level1: dispSrcKelompok
+          }),
+          destData: Object.assign({}, subDst || {}, {
+            id: dispDstId,
+            code: dispDstId,
+            instrument_code: dispDstInst,
+            instrument_name: instName(dispDstInst),
+            aspek: (subDst && subDst.aspek) || dstGroupAspek,
+            indikator: (subDst && (subDst.indikator || subDst.komponen)) || dispDstName,
+            kelompok_level1: dispDstKelompok
+          }),
           sourceQuestion: dispSrcName,
           destQuestion: dispDstName,
           reason: r.alasanSubstantif,
