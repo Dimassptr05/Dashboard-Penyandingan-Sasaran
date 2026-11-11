@@ -4535,4 +4535,113 @@ body {
   cursor: pointer;
 }
 
+.matrix-all-indices-scroll {
+  width: 100%;
+  overflow-x: auto !important;
+}
+
+.matrix-table-all-indices {
+  min-width: 980px;
+}
+
+.matrix-table-all-indices th,
+.matrix-table-all-indices td {
+  padding: 9px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matrix-table-all-indices th.col-corner,
+.matrix-table-all-indices td.row-header {
+  text-align: left;
+}
+
+.matrix-table-all-indices .row-header strong,
+.s4dev-all-index-name {
+  display: block;
+}
+
+.s4dev-all-index-name {
+  color: #64748b;
+  font-size: 11px;
+  white-space: normal;
+}
+
+.matrix-table-all-indices .matrix-cell-btn {
+  min-width: 32px;
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: #e0f2fe;
+  color: #0369a1;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.matrix-table-all-indices .matrix-cell-btn:hover,
+.matrix-table-all-indices .matrix-cell-btn:focus-visible {
+  transform: translateY(-1px);
+  background: #bae6fd;
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.16);
+  outline: none;
+}
+
+.matrix-table-all-indices .s4dev-all-empty {
+  padding: 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (min-width: 1201px) {
+  .s4dev-filter-bar .filter-controls-row:first-child {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.s4dev-filter-bar .filter-controls-row {
+  align-items: stretch;
+}
+
+.s4dev-filter-bar .select-input {
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.logic-hint-banner.s4dev-logic-note {
+  align-items: flex-start;
+  padding: 14px 18px;
+  border-color: #bfdbfe;
+  background: linear-gradient(120deg, #f0f9ff, #f8fbff);
+}
+
+.s4dev-logic-copy {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+  line-height: 1.6;
+  animation: matrixContainerFadeIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.s4dev-logic-copy > strong {
+  color: #0c4a6e;
+  font-size: 13px;
+}
+
+.s4dev-logic-copy > span {
+  color: #334155;
+}
+
+@media (max-width: 640px) {
+  .s4dev-filter-bar {
+    margin: 12px !important;
+    padding: 14px !important;
+  }
+
+  .logic-hint-banner.s4dev-logic-note {
+    padding: 12px;
+    font-size: 12px;
+  }
+}
+
 

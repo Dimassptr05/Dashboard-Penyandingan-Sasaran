@@ -670,10 +670,14 @@
       return ["PEMDI"];
     }
     if (String(state.internalSasaranId) === "4-dev") {
-      if (state.devGroup === "Kelembagaan") return ["KK"];
-      if (state.devGroup === "Manajemen Kinerja dan Penganggaran") return ["IPPN", "CKKP", "SAKIP", "ELPPD", "IKPA", "IPA"];
-      if (state.devGroup === "Manajemen Risiko") return ["SPIP"];
-      return ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
+      const indices = state.devGroup === "Kelembagaan"
+        ? ["KK"]
+        : state.devGroup === "Manajemen Kinerja dan Penganggaran"
+          ? ["IPPN", "CKKP", "SAKIP", "ELPPD", "IKPA", "IPA"]
+          : state.devGroup === "Manajemen Risiko"
+            ? ["SPIP"]
+            : S4DEV_INDEX_ORDER;
+      return indices.length > 1 ? ["ALL", ...indices] : indices;
     }
     const sId = Number(state.internalSasaranId);
     if (sId === 4) return ["KK"];
@@ -1550,6 +1554,8 @@
 
     const isS4Dev = (state.activeMenu === "internal" && String(state.internalSasaranId) === "4-dev");
     const isS4InternalComp = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+    const filterBar = document.getElementById("mainFilterBar");
+    if (filterBar) filterBar.classList.toggle("s4dev-filter-bar", isS4Dev);
     if (dom.groupDevGroupSelect) {
       if (isS4Dev) {
         dom.groupDevGroupSelect.classList.remove("hidden");
@@ -1582,7 +1588,10 @@
       const comps = sourceComponents();
       fillSelect(
         dom.selectComponent,
-        comps.map(x => ({ value: x.id, label: `[${x.inst}] ${x.name}` })),
+        comps.map(x => ({
+          value: x.id,
+          label: state.source === "ALL" ? `[${x.inst}] ${x.name}` : x.name
+        })),
         state.component,
         state.source && state.source !== "ALL" ? `Semua Indikator ${state.source}` : "Semua Indikator Sumber"
       );
@@ -1630,7 +1639,10 @@
     );
 
     const isS4Internal = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
-    const standardTypes = isS4Internal
+    const s4DevTypes = ["Langsung", "Mendukung", "Tidak Langsung"];
+    const standardTypes = isS4Dev
+      ? s4DevTypes
+      : isS4Internal
       ? ["Mendukung", "Langsung", "Tidak Langsung"]
       : [
           "Mendukung",
@@ -1639,6 +1651,7 @@
           "Potensi Tumpang Tindih",
           "Keselarasan Perencanaan"
         ];
+    if (isS4Dev && state.rtype && !s4DevTypes.includes(state.rtype)) state.rtype = "";
     fillSelect(
       dom.selectRelationType,
       standardTypes.map(t => ({ value: t, label: t })),
@@ -1690,6 +1703,7 @@
 
   function updateLogicNote() {
     if (!dom.logicNote) return;
+    dom.logicNote.classList.remove("s4dev-logic-note");
 
     if (state.activeMenu === "external") {
       dom.logicNote.innerHTML = `<strong>Relasi Eksternal Antar-Sasaran:</strong> Memetakan hubungan keterkaitan indikator dari <b>Sasaran 1 (Pemerintah Digital) menuju Sasaran 2, 3, 4, dan 5</b>. Pasangan indikator yang telah ditelaah diklasifikasikan ke dalam lima jenis keterkaitan standar. Klik angka pada sel matriks untuk membuka Peta Relasi.`;
@@ -1700,7 +1714,13 @@
       const devTotal = (window.RB_SASARAN4_DEV && window.RB_SASARAN4_DEV.relations)
         ? window.RB_SASARAN4_DEV.relations.length
         : ((window.RB_SASARAN4_DEV_BASELINE && window.RB_SASARAN4_DEV_BASELINE.total) ? window.RB_SASARAN4_DEV_BASELINE.total : 494);
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4-Dev:</strong> Angka menunjukkan banyaknya relasi keterkaitan multi-indeks sesuai <b>${devTotal} relasi pengembangan</b> yang terbagi ke dalam 3 kelompok utama. Klik sel matriks untuk meninjau diagram alur dan daftar relasi.`;
+      dom.logicNote.classList.add("s4dev-logic-note");
+      dom.logicNote.innerHTML = `
+        <div class="s4dev-logic-copy">
+          <strong>Cara membaca matriks Sasaran 4-Dev</strong>
+          <span>Setiap angka menunjukkan jumlah relasi antarindeks. Data mencakup <b>${devTotal.toLocaleString("id-ID")} relasi pengembangan</b> dalam tiga kelompok utama.</span>
+          <span>Klik angka pada sel untuk meninjau diagram alur dan daftar relasinya.</span>
+        </div>`;
       return;
     }
     const sId = Number(state.internalSasaranId);
@@ -2372,9 +2392,83 @@
     const validSources = listSources();
     const activeSrc = (state.source && state.source !== "ALL" && validSources.includes(state.source))
       ? state.source
-      : (validSources[0] || "KK");
+      : (state.source === "ALL" && validSources.includes("ALL") ? "ALL" : (validSources[0] || "KK"));
     if (state.source !== activeSrc) {
       state.source = activeSrc;
+    }
+
+    if (activeSrc === "ALL") {
+      const currentFiltered = filteredRelations();
+      const sourceIndices = validSources.filter(code =>
+        code !== "ALL" && devSource.some(relation => relation.sourceIndex === code)
+      );
+      const sourceIndexSet = new Set(sourceIndices);
+      const counts = new Map();
+      for (const relation of currentFiltered) {
+        const source = sourceIndexSet.has(relation.sourceInst) || !sourceIndexSet.has(relation.destInst)
+          ? relation.sourceInst
+          : relation.destInst;
+        const dest = source === relation.sourceInst ? relation.destInst : relation.sourceInst;
+        const key = `${source}\u241f${dest}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+
+      const headers = S4DEV_INDEX_ORDER.map(code =>
+        `<th class="s4dev-th-idx" scope="col" title="${esc(instName(code))}">${esc(code)}</th>`
+      ).join("");
+      const rows = sourceIndices.map(source => {
+        let rowTotal = 0;
+        const cells = S4DEV_INDEX_ORDER.map(dest => {
+          const count = counts.get(`${source}\u241f${dest}`) || 0;
+          rowTotal += count;
+          return count
+            ? `<td class="matrix-cell-active"><button class="matrix-cell-btn" data-dev-source-index="${esc(source)}" data-dev-dest-index="${esc(dest)}" type="button" title="${esc(instName(source))} → ${esc(instName(dest))}: ${count} relasi"><span class="cell-num">${count}</span></button></td>`
+            : '<td><span class="matrix-cell-zero">0</span></td>';
+        }).join("");
+        return `<tr><td class="row-header"><strong>${esc(source)}</strong><span class="s4dev-all-index-name">${esc(instName(source))}</span></td>${cells}<td class="matrix-row-total">${rowTotal}</td></tr>`;
+      }).join("");
+      const columnTotals = S4DEV_INDEX_ORDER.map(dest => {
+        const total = [...counts].reduce((sum, [key, count]) => key.endsWith(`\u241f${dest}`) ? sum + count : sum, 0);
+        return `<td class="matrix-col-total-cell">${total}</td>`;
+      }).join("");
+      const total = currentFiltered.length;
+      const heroKpiGrid = dom.stageMatrix ? dom.stageMatrix.querySelector(".hero-kpi-grid") : null;
+      if (heroKpiGrid) {
+        heroKpiGrid.innerHTML = `
+          <div class="kpi-mini-card kpi-text-only"><div class="kpi-info"><strong>${total.toLocaleString("id-ID")}</strong><small>Hubungan Keterkaitan</small></div></div>
+          <div class="kpi-mini-card kpi-text-only"><div class="kpi-info"><strong>${sourceIndices.length}</strong><small>Indeks Sumber</small></div></div>
+          <div class="kpi-mini-card kpi-text-only"><div class="kpi-info"><strong>${new Set(currentFiltered.flatMap(relation => [relation.sourceInst, relation.destInst])).size}</strong><small>Indeks Terlibat</small></div></div>
+          <div class="kpi-mini-card kpi-text-only"><div class="kpi-info"><strong>3</strong><small>Kelompok Utama</small></div></div>
+        `;
+      }
+      if (dom.matrixFineprint) {
+        dom.matrixFineprint.innerHTML = `<span class="fineprint-text">Baris menunjukkan indeks sumber, kolom menunjukkan indeks pembanding, dan angka menunjukkan jumlah relasi. Klik angka untuk membuka peta relasi.</span>`;
+      }
+      dom.matrixTableContainer.innerHTML = `
+        <div class="matrix-scroll-wrapper matrix-all-indices-scroll">
+          <table class="matrix-table matrix-table-s4dev matrix-table-all-indices">
+            <thead><tr><th class="col-corner">Indeks Sumber (Baris) \\ Indeks Pembanding (Kolom)</th>${headers}<th class="col-total-header">Total</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="${S4DEV_INDEX_ORDER.length + 2}" class="s4dev-all-empty">Tidak ada relasi pada filter saat ini.</td></tr>`}
+              <tr class="matrix-footer-total-row"><td class="row-header footer-total-header">TOTAL RELASI</td>${columnTotals}<td class="matrix-grand-total">${total}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+      dom.matrixTableContainer.querySelectorAll("[data-dev-source-index]").forEach(button => {
+        button.onclick = () => {
+          state.source = button.dataset.devSourceIndex;
+          state.dest = button.dataset.devDestIndex;
+          state.component = "";
+          state.chosenSrc = "";
+          state.chosenInst = "";
+          state.chosenDest = "";
+          populateFilters();
+          setStage("graph");
+        };
+      });
+      if (dom.topbarSummaryText) {
+        dom.topbarSummaryText.textContent = `Sasaran 4-dev: ${total.toLocaleString("id-ID")} Hubungan Keterkaitan (Semua Indeks)`;
+      }
+      return;
     }
 
     // 1. Tentukan indeks pembanding yang memiliki relasi dengan activeSrc
