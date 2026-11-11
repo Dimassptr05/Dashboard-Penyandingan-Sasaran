@@ -13,6 +13,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sasaran4-dev"
+  to = "/.netlify/functions/get-sasaran4-dev"
+  status = 200
+
+[[redirects]]
   from = "/api/sasaran5"
   to = "/.netlify/functions/get-sasaran5"
   status = 200

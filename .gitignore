@@ -4,6 +4,7 @@ Thumbs.db
 desktop.ini
 
 # Scratch and Temporary files
+scratch/
 *.tmp
 *.log
 ~$*

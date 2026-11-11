@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=20261110_v18">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261111_v494">
 </head>
 
 <body>
@@ -116,8 +116,22 @@
             </label>
             <select id="selectInternalSasaran" class="select-input">
               <option value="5" selected>Sasaran 5 — Pelayanan Publik</option>
-              <option value="4">Sasaran 4 — Kapabilitas Kelembagaan</option>
+              <option value="4">Sasaran 4 — Kapabilitas Kelembagaan (168 Relasi)</option>
+              <option value="4-dev">Sasaran 4-dev — Relasi Antarindeks</option>
               <option value="3">Sasaran 3 — Integritas &amp; Inovasi (Data Perlu Diperjelas)</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Kelompok Sasaran 4 (Level 1 Khusus Sasaran 4-Dev) -->
+          <div class="filter-group hidden" id="groupDevGroupSelect">
+            <label for="selectDevGroup">
+              <span>Kelompok Sasaran 4</span>
+            </label>
+            <select id="selectDevGroup" class="select-input">
+              <option value="ALL" selected>Semua Kelompok</option>
+              <option value="Kelembagaan">Kelembagaan</option>
+              <option value="Manajemen Kinerja dan Penganggaran">Manajemen Kinerja dan Penganggaran</option>
+              <option value="Manajemen Risiko">Manajemen Risiko</option>
             </select>
           </div>
 
@@ -189,6 +203,19 @@
             </label>
             <select id="selectRelationType" class="select-input">
               <!-- Dimuat dinamis oleh app.js -->
+            </select>
+          </div>
+
+          <!-- Filter Risiko Redundansi (Khusus Sasaran 4-Dev) -->
+          <div class="filter-group hidden" id="groupRedundancyRiskSelect">
+            <label for="selectRedundancyRisk">
+              <span>Risiko Redundansi</span>
+            </label>
+            <select id="selectRedundancyRisk" class="select-input">
+              <option value="ALL" selected>Semua Tingkat Risiko</option>
+              <option value="Rendah">Rendah (291)</option>
+              <option value="Sedang">Sedang (108)</option>
+              <option value="Tinggi">Tinggi (48)</option>
             </select>
           </div>
 
@@ -573,11 +600,12 @@
   <script src="data/rb-relasi-eksternal-terbaru.js?v=20261109_v8"></script>
   <script src="data/jenis-keterkaitan.js?v=20261109_v8"></script>
   <script src="data/substansi-indikator.js?v=20261109_v8"></script>
+  <script src="data/sasaran4-dev-baseline.js?v=20261111_v494"></script>
   <!-- Pustaka Ekspor PDF Mandiri (100% Offline & Kompatibel file://) -->
   <script src="vendor/html2pdf.bundle.min.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/jspdf.plugin.autotable.min.js"></script>
-  <script src="assets/js/app.js?v=20261110_v18"></script>
+  <script src="assets/js/app.js?v=20261111_v494"></script>
 </body>
 
 </html>
