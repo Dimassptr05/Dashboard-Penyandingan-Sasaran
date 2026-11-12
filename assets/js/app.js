@@ -5637,6 +5637,7 @@
       dom.btnSidebarToggle.setAttribute("aria-label", label);
       dom.btnSidebarToggle.title = label;
       window.dispatchEvent(new Event("resize"));
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 260);
     };
     dom.menuInternal.onclick = () => setMenu("internal");
     dom.menuExternal.onclick = () => setMenu("external");
