@@ -671,7 +671,7 @@
       return ["PEMDI"];
     }
     if (String(state.internalSasaranId) === "4-dev") {
-      let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
+let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
       if (state.devGroup === "Kelembagaan") indices = ["KK"];
       else if (state.devGroup === "Manajemen Kinerja dan Penganggaran") indices = ["IPPN", "CKKP", "SAKIP", "ELPPD", "IKPA", "IPA"];
       else if (state.devGroup === "Manajemen Risiko") indices = ["SPIP"];
@@ -1557,6 +1557,8 @@
     );
 
     const isS4InternalComp = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
+    const filterBar = document.getElementById("mainFilterBar");
+    if (filterBar) filterBar.classList.toggle("s4dev-filter-bar", isS4Dev);
     if (dom.groupDevGroupSelect) {
       if (isS4Dev) {
         dom.groupDevGroupSelect.classList.remove("hidden");
@@ -1589,7 +1591,10 @@
       const comps = sourceComponents();
       fillSelect(
         dom.selectComponent,
-        comps.map(x => ({ value: x.id, label: `[${x.inst}] ${x.name}` })),
+        comps.map(x => ({
+          value: x.id,
+          label: state.source === "ALL" ? `[${x.inst}] ${x.name}` : x.name
+        })),
         state.component,
         state.source && state.source !== "ALL" ? `Semua Indikator ${state.source}` : "Semua Indikator Sumber"
       );
@@ -1637,7 +1642,10 @@
     );
 
     const isS4Internal = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
-    const standardTypes = isS4Internal
+    const s4DevTypes = ["Langsung", "Mendukung", "Tidak Langsung"];
+    const standardTypes = isS4Dev
+      ? s4DevTypes
+      : isS4Internal
       ? ["Mendukung", "Langsung", "Tidak Langsung"]
       : [
           "Mendukung",
@@ -1646,6 +1654,7 @@
           "Potensi Tumpang Tindih",
           "Keselarasan Perencanaan"
         ];
+    if (isS4Dev && state.rtype && !s4DevTypes.includes(state.rtype)) state.rtype = "";
     fillSelect(
       dom.selectRelationType,
       standardTypes.map(t => ({ value: t, label: t })),
@@ -1697,6 +1706,7 @@
 
   function updateLogicNote() {
     if (!dom.logicNote) return;
+    dom.logicNote.classList.remove("s4dev-logic-note");
 
     if (state.activeMenu === "external") {
       dom.logicNote.innerHTML = `<strong>Relasi Eksternal Antar-Sasaran:</strong> Memetakan hubungan keterkaitan indikator dari <b>Sasaran 1 (Pemerintah Digital) menuju Sasaran 2, 3, 4, dan 5</b>. Pasangan indikator yang telah ditelaah diklasifikasikan ke dalam lima jenis keterkaitan standar. Klik angka pada sel matriks untuk membuka Peta Relasi.`;
@@ -1707,7 +1717,13 @@
       const devTotal = (window.RB_SASARAN4_DEV && window.RB_SASARAN4_DEV.relations)
         ? window.RB_SASARAN4_DEV.relations.length
         : ((window.RB_SASARAN4_DEV_BASELINE && window.RB_SASARAN4_DEV_BASELINE.total) ? window.RB_SASARAN4_DEV_BASELINE.total : 494);
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4-Dev:</strong> Angka menunjukkan banyaknya relasi keterkaitan multi-indeks sesuai <b>${devTotal} relasi pengembangan</b> yang terbagi ke dalam 3 kelompok utama. Klik sel matriks untuk meninjau diagram alur dan daftar relasi.`;
+      dom.logicNote.classList.add("s4dev-logic-note");
+      dom.logicNote.innerHTML = `
+        <div class="s4dev-logic-copy">
+          <strong>Cara membaca matriks Sasaran 4-Dev</strong>
+          <span>Setiap angka menunjukkan jumlah relasi antarindeks. Data mencakup <b>${devTotal.toLocaleString("id-ID")} relasi pengembangan</b> dalam tiga kelompok utama.</span>
+          <span>Klik angka pada sel untuk meninjau diagram alur dan daftar relasinya.</span>
+        </div>`;
       return;
     }
     const sId = Number(state.internalSasaranId);
@@ -2389,6 +2405,7 @@
           <button type="button" class="s4dev-mode-btn ${!isModeA ? 'active' : ''}" data-s4dev-mode="rincian" title="Tampilkan Matriks Rincian Aspek & Indikator">
             <span>📋</span> Matriks Rincian Indikator
           </button>
+
         </div>
         ${!isModeA ? `
           <button type="button" class="btn btn-secondary btn-sm" id="btnBackToAntarindeks" style="font-size:12px; font-weight:600; padding:5px 12px; display:inline-flex; align-items:center; gap:6px;">
@@ -5845,6 +5862,7 @@
       dom.btnSidebarToggle.setAttribute("aria-label", label);
       dom.btnSidebarToggle.title = label;
       window.dispatchEvent(new Event("resize"));
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 260);
     };
     dom.menuInternal.onclick = () => setMenu("internal");
     dom.menuExternal.onclick = () => setMenu("external");
