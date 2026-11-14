@@ -4237,7 +4237,46 @@ body {
   transform: none !important;
 }
 
-/* Styling Khusus Matriks Sasaran 4-dev (Matriks Bertingkat Ringkas) */
+/* Styling Khusus Matriks Sasaran 4-dev (Matriks Antarindeks & Rincian Indikator) */
+.s4dev-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.s4dev-mode-toggle-group {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.s4dev-mode-btn {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.s4dev-mode-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
 .matrix-table-s4dev {
   width: 100%;
   border-collapse: separate;
@@ -4246,6 +4285,7 @@ body {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+  table-layout: fixed;
 }
 
 .matrix-table-s4dev th.col-corner {
@@ -4257,6 +4297,8 @@ body {
   padding: 10px 14px;
   border-bottom: 2px solid #0284c7;
   border-right: 1px solid #edf2f7;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .matrix-table-s4dev th.s4dev-th-idx {
@@ -4265,11 +4307,12 @@ body {
   font-weight: 700;
   font-size: 13px;
   text-align: center;
-  padding: 10px 8px;
+  padding: 10px 6px;
   border-bottom: 2px solid #0284c7;
   border-right: 1px solid #edf2f7;
   cursor: help;
   transition: background-color 150ms ease;
+  white-space: nowrap;
 }
 
 .matrix-table-s4dev th.s4dev-th-idx:hover {
@@ -4285,6 +4328,7 @@ body {
   text-align: center;
   padding: 10px 8px;
   border-bottom: 2px solid #0284c7;
+  white-space: nowrap;
 }
 
 .matrix-table-s4dev td.row-header {
@@ -4292,6 +4336,9 @@ body {
   border-right: 1px solid #edf2f7;
   border-bottom: 1px solid #edf2f7;
   padding: 10px 14px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .matrix-table-s4dev tr.matrix-aspect-row:hover td {
@@ -4303,11 +4350,31 @@ body {
   border-bottom: 1px solid #bae6fd;
 }
 
+.matrix-table-s4dev .matrix-aspect-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.matrix-table-s4dev .matrix-aspect-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .matrix-table-s4dev .matrix-aspect-name {
   font-weight: 700;
   font-size: 13px;
   color: #0f172a;
   font-style: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .matrix-table-s4dev .badge-sub-count {
@@ -4318,14 +4385,25 @@ body {
   padding: 2px 8px;
   border-radius: 12px;
   font-style: normal;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.matrix-table-s4dev .btn-toggle-subrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .matrix-table-s4dev .s4dev-ind-name {
   font-size: 12px;
   font-weight: 600;
   color: #1e293b;
-  line-height: 1.35;
+  line-height: 1.4;
   font-style: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  display: block;
 }
 
 .matrix-table-s4dev .s4dev-ind-code {
@@ -4333,6 +4411,8 @@ body {
   color: #64748b;
   margin-top: 2px;
   font-style: normal;
+  word-break: break-word;
+  display: block;
 }
 
 .matrix-table-s4dev tr.matrix-group-subrow td {
@@ -4347,6 +4427,20 @@ body {
 
 .matrix-table-s4dev .subrow-header {
   border-left: 3px solid #0284c7 !important;
+}
+
+.matrix-table-s4dev .matrix-cell-diagonal {
+  background: #f8fafc;
+  color: #94a3b8;
+  font-weight: 700;
+  text-align: center;
+  font-size: 14px;
+  cursor: default;
+  user-select: none;
+}
+
+.matrix-table-s4dev .matrix-cell-btn {
+  margin: 0 auto;
 }
 
 /* 8. Peta Relasi (Stage 2 Transisi Halus & Kartu Rapi) */
