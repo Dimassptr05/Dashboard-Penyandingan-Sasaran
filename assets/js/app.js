@@ -1664,12 +1664,9 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
 
     if (dom.selectInternalSasaran) {
       dom.selectInternalSasaran.value = state.internalSasaranId;
-      const optS4 = dom.selectInternalSasaran.querySelector('option[value="4"]');
-      if (optS4) {
-        const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
-        optS4.textContent = s4Count > 0
-          ? `Sasaran 4 — Kapabilitas Kelembagaan (${s4Count} Relasi)`
-          : "Sasaran 4 — Kapabilitas Kelembagaan";
+      if (state.internalSasaranId === 4 || state.internalSasaranId === "4") {
+        state.internalSasaranId = "4-dev";
+        dom.selectInternalSasaran.value = "4-dev";
       }
       const optS4Dev = dom.selectInternalSasaran.querySelector('option[value="4-dev"]');
       if (optS4Dev) {
