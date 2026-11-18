@@ -14,7 +14,7 @@ Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka se
    - **Tahap 3: Daftar Rincian Hubungan Analitis** — Tabel komprehensif memuat kode, substansi indikator, jenis keterkaitan, dan justifikasi hubungan.
 
 2. **Ruang Lingkup Relasi:**
-   - **Relasi Internal:** Memetakan keterkaitan antar-indeks dalam satu sasaran (Sasaran 3 — Integritas & Inovasi, Sasaran 4 — Kapabilitas Kelembagaan, Sasaran 5 — Pelayanan Publik).
+   - **Relasi Internal:** Memetakan keterkaitan antar-indeks dalam satu sasaran (Sasaran 3 — Integritas & Inovasi, Sasaran 4-dev — Relasi Antarindeks, Sasaran 5 — Pelayanan Publik).
    - **Relasi Eksternal:** Memetakan hubungan indikator dari Sasaran 1 (Transformasi Digital) ke Sasaran 2, 3, 4, dan 5.
 
 3. **Interaktivitas & Filter Cerdas:**
