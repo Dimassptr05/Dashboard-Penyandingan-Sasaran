@@ -31,13 +31,25 @@
 
       <div class="sidebar-nav-title">Menu Utama</div>
       <nav class="sidebar-menu">
-        <button class="nav-btn active" id="menuInternal" data-menu="internal">
-          <span class="nav-icon">⤳</span>
-          <span class="nav-text">Relasi Internal</span>
-        </button>
-        <button class="nav-btn" id="menuExternal" data-menu="external">
+        <button class="nav-btn" id="menuPairingToggle" type="button" aria-expanded="true"
+          aria-controls="pairingSubmenu">
           <span class="nav-icon">⇄</span>
-          <span class="nav-text">Relasi Eksternal</span>
+          <span class="nav-text">Penyandingan Sasaran</span>
+          <span class="nav-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="sidebar-submenu" id="pairingSubmenu">
+          <button class="nav-btn nav-sub-btn active" id="menuInternal" data-menu="internal" type="button">
+            <span class="nav-icon">⤳</span>
+            <span class="nav-text">Relasi Internal</span>
+          </button>
+          <button class="nav-btn nav-sub-btn" id="menuExternal" data-menu="external" type="button">
+            <span class="nav-icon">⇄</span>
+            <span class="nav-text">Relasi Eksternal</span>
+          </button>
+        </div>
+        <button class="nav-btn" id="menuAnalysisScore" type="button">
+          <span class="nav-icon">▤</span>
+          <span class="nav-text">Analisis Indeks Score</span>
         </button>
       </nav>
     </aside>
@@ -530,6 +542,15 @@
         </div>
       </section>
     </div>
+    <main class="main-content analysis-score-view" id="analysisScoreView" hidden>
+      <div class="analysis-score-toolbar">
+        <button class="sidebar-toggle" id="btnAnalysisSidebarToggle" type="button" aria-controls="primarySidebar"
+          aria-expanded="true" aria-label="Sembunyikan navigasi" title="Sembunyikan navigasi">
+          <span aria-hidden="true">☰</span>
+        </button>
+      </div>
+      <iframe title="Analisis Indeks Score" data-src="assets/analisis-indeks-score.html"></iframe>
+    </main>
   </div>
 
   <!-- ======================================================== -->
@@ -605,6 +626,51 @@
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="assets/js/app.js?v=20261111_v495_def"></script>
+  <script>
+    (() => {
+      const layout = document.querySelector(".app-layout");
+      const analysisView = document.getElementById("analysisScoreView");
+      const analysisMenu = document.getElementById("menuAnalysisScore");
+      const analysisFrame = document.querySelector("#analysisScoreView iframe");
+      const sidebarToggle = document.getElementById("btnSidebarToggle");
+      const analysisSidebarToggle = document.getElementById("btnAnalysisSidebarToggle");
+      const pairingToggle = document.getElementById("menuPairingToggle");
+      const pairingSubmenu = document.getElementById("pairingSubmenu");
+      const relationMenus = ["menuInternal", "menuExternal"].map(id => document.getElementById(id));
+
+      function showAnalysis(visible) {
+        layout.classList.toggle("analysis-mode", visible);
+        analysisView.hidden = !visible;
+        analysisMenu.classList.toggle("active", visible);
+        if (visible) {
+          if (analysisFrame.dataset.src) {
+            analysisFrame.src = analysisFrame.dataset.src;
+            delete analysisFrame.dataset.src;
+          }
+          const comparison = document.getElementById("comparisonS4");
+          if (comparison) comparison.hidden = true;
+          const comparisonMenu = document.getElementById("menuComparisonS4");
+          if (comparisonMenu) comparisonMenu.classList.remove("active");
+          const primary = document.querySelector(".main-content:not(#analysisScoreView):not(.cmp-root)");
+          if (primary) primary.classList.remove("cmp-primary-hidden");
+        }
+      }
+
+      analysisMenu.addEventListener("click", () => showAnalysis(true));
+      relationMenus.forEach(button => button.addEventListener("click", () => showAnalysis(false)));
+      analysisSidebarToggle.addEventListener("click", () => {
+        sidebarToggle.click();
+        analysisSidebarToggle.setAttribute("aria-expanded", sidebarToggle.getAttribute("aria-expanded"));
+        analysisSidebarToggle.setAttribute("aria-label", sidebarToggle.getAttribute("aria-label"));
+        analysisSidebarToggle.title = sidebarToggle.title;
+      });
+      pairingToggle.addEventListener("click", () => {
+        const expanded = pairingToggle.getAttribute("aria-expanded") !== "true";
+        pairingToggle.setAttribute("aria-expanded", String(expanded));
+        pairingSubmenu.classList.toggle("is-collapsed", !expanded);
+      });
+    })();
+  </script>
 </body>
 
 </html>

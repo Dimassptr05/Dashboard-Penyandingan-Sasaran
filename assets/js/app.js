@@ -22,6 +22,7 @@
     if (!text || typeof text !== "string") return "";
     let s = text.trim();
     // Hilangkan prefiks ID teknis jika ada, contoh: "SS4-IPPN.1.c.4 — " atau "SS4-KK.KP.3.1: "
+    s = s.replace(/^\[\s*SS\d+-[A-Za-z0-9_.]+\s*\]\s*/i, "");
     s = s.replace(/^SS\d+-[A-Za-z0-9_.]+\s*[—:\-]\s*/i, "");
     // Hilangkan prefiks penomoran struktural teknis berulang
     let prev = "";
@@ -2787,7 +2788,6 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
                 <td class="row-header subrow-header">
                   <div class="matrix-row-title-wrap" style="display:flex; flex-direction:column; gap:2px; min-width:0;">
                     <span class="s4dev-ind-name">${esc(cleanLabel(indName))}</span>
-                    <span class="s4dev-ind-code">[${esc(indCode)}]</span>
                   </div>
                 </td>
                 ${subCellsHtml}
@@ -4735,7 +4735,14 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
       if (dom.externalAuditNoticeBox) dom.externalAuditNoticeBox.classList.add("hidden");
       if (dom.sidebarScopeTitle) dom.sidebarScopeTitle.textContent = "Relasi Internal";
       if (dom.sidebarScopeDesc) dom.sidebarScopeDesc.textContent = "Memetakan hubungan antar-indeks dalam sasaran strategis yang sama (Sasaran 3, 4, dan 5).";
-      state.source = Number(state.internalSasaranId) === 4 ? "KK" : (Number(state.internalSasaranId) === 5 ? "IPP" : "IIIP");
+      if (String(state.internalSasaranId) === "4-dev") {
+        state.source = "ALL";
+        state.devGroup = "ALL";
+        state.devMatrixMode = "antarindeks";
+        state.devOpenGroup = "";
+      } else {
+        state.source = Number(state.internalSasaranId) === 4 ? "KK" : (Number(state.internalSasaranId) === 5 ? "IPP" : "IIIP");
+      }
     } else {
       dom.menuInternal.classList.remove("active");
       dom.menuExternal.classList.add("active");
@@ -5875,8 +5882,9 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
         state.s3GraphPickedIndicator = false;
         if (state.internalSasaranId === "4-dev") {
           state.devGroup = "ALL";
-          state.source = "KK";
+          state.source = "ALL";
           state.redundancyRisk = "ALL";
+          state.devMatrixMode = "antarindeks";
           state.devOpenGroup = "";
         } else {
           state.source = state.internalSasaranId === 4 ? "KK" : (state.internalSasaranId === 5 ? "IPP" : "IIIP");
