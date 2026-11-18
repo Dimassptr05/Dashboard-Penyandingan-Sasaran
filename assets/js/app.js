@@ -1357,11 +1357,6 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
       state.activeMenu === "external" ? "Semua Instrumen Sumber" : null
     );
 
-<<<<<<< Updated upstream
-    const isS4InternalComp = (state.activeMenu === "internal" && Number(state.internalSasaranId) === 4);
-=======
-    const isS4Dev = (state.activeMenu === "internal" && String(state.internalSasaranId) === "4-dev");
->>>>>>> Stashed changes
     const filterBar = document.getElementById("mainFilterBar");
     if (filterBar) filterBar.classList.toggle("s4dev-filter-bar", isS4Dev);
     if (dom.groupDevGroupSelect) {
@@ -1450,13 +1445,10 @@ let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
 
     if (dom.selectInternalSasaran) {
       dom.selectInternalSasaran.value = state.internalSasaranId;
-<<<<<<< Updated upstream
-      if (state.internalSasaranId === 4 || state.internalSasaranId === "4") {
+if (state.internalSasaranId === 4 || state.internalSasaranId === "4") {
         state.internalSasaranId = "4-dev";
         dom.selectInternalSasaran.value = "4-dev";
       }
-=======
->>>>>>> Stashed changes
       const optS4Dev = dom.selectInternalSasaran.querySelector('option[value="4-dev"]');
       if (optS4Dev) {
         const devCount = (window.RB_SASARAN4_DEV?.relations?.length) || (window.RB_SASARAN4_DEV_BASELINE?.relations?.length) || 0;
