@@ -66,7 +66,12 @@ const server = http.createServer(async (req, res) => {
   let apiHandler = null;
   if (pathname === "/api/sasaran3" || pathname === "/.netlify/functions/get-sasaran3") {
     apiHandler = sasaran3Handler;
-  } else if (pathname === "/api/sasaran4" || pathname === "/.netlify/functions/get-sasaran4") {
+  } else if (
+    pathname === "/api/sasaran4" ||
+    pathname === "/.netlify/functions/get-sasaran4" ||
+    pathname === "/api/sasaran4-dev" ||
+    pathname === "/.netlify/functions/get-sasaran4-dev"
+  ) {
     apiHandler = sasaran4Handler;
   } else if (pathname === "/api/sasaran5" || pathname === "/.netlify/functions/get-sasaran5") {
     apiHandler = sasaran5Handler;

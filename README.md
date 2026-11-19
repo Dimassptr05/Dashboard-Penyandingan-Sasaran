@@ -59,7 +59,7 @@ Aplikasi dapat dijalankan dengan mudah melalui dua cara:
 Buka `index.html` langsung melalui protokol `file:///` untuk melihat dataset baseline. Sinkronisasi Google Sheets memerlukan HTTP server.
 
 ### 2. Mode Online dan Pengembangan
-Deploy ke Netlify untuk menggunakan Netlify Functions dan sinkronisasi Google Sheets. Untuk pengembangan lokal, jalankan `npm run dev` lalu buka URL yang ditampilkan server. Sasaran 4 membaca relasi serta metadata indeks dari sheet `sasaran4-js`.
+Deploy ke Netlify untuk menggunakan Netlify Functions dan sinkronisasi Google Sheets. Untuk pengembangan lokal, jalankan `npm run dev` lalu buka URL yang ditampilkan server. Sasaran 4 membaca relasi final dari sheet `sasaran 4 -dev` (GID `1144784169`).
 
 ### Pengujian
 

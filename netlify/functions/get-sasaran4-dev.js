@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * NETLIFY FUNCTION: get-sasaran4-dev
- * Endpoint: /.netlify/functions/get-sasaran4-dev (atau /api/sasaran4-dev)
- * Single Source of Truth: Google Sheets "sasaran 4 -dev"
- * Dataset: 447 Relasi Multi-Indeks (3 Kelompok, 8 Indeks Sumber/Pembanding)
+ * NETLIFY FUNCTION: get-sasaran4-dev (Sumber Final Resmi Sasaran 4)
+ * Endpoint: /.netlify/functions/get-sasaran4 (atau /api/sasaran4)
+ * Alias kompatibilitas: /.netlify/functions/get-sasaran4-dev (atau /api/sasaran4-dev)
+ * Single Source of Truth: Google Sheets "sasaran 4 -dev" (GID: 1144784169)
  * ============================================================================
  */
 
@@ -265,12 +265,16 @@ function parseSheetRows(rows) {
   };
 }
 
+exports.parseCSV = parseCSV;
+exports.parseSheetRows = parseSheetRows;
+
 exports.handler = async function (event, context) {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store, no-cache, must-revalidate"
   };
 
   if (event.httpMethod === "OPTIONS") {
@@ -278,8 +282,9 @@ exports.handler = async function (event, context) {
   }
 
   const spreadsheetId = process.env.SPREADSHEET_ID || "1LVXNqK7ehp2fLtrFstnTcM2jiyOeWCPhR1CdC14jwDs";
-  const sheetName = process.env.SHEET_NAME_SASARAN4_DEV || "sasaran 4 -dev";
-  const sheetGid = process.env.SHEET_GID_SASARAN4_DEV || "1144784169";
+  // Hanya membaca env khusus Sasaran 4 final agar env lama SHEET_NAME=sasaran4-js / SHEET_GID=1944797946 tidak menimpa sumber final
+  const sheetName = process.env.SHEET_NAME_SASARAN4_DEV || process.env.SHEET_NAME_SASARAN4 || "sasaran 4 -dev";
+  const sheetGid = process.env.SHEET_GID_SASARAN4_DEV || process.env.SHEET_GID_SASARAN4 || "1144784169";
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const apiKey = process.env.GOOGLE_API_KEY;
@@ -301,22 +306,23 @@ exports.handler = async function (event, context) {
       rows = await fetchSheetRows(spreadsheetId, sheetName, null, apiKey);
     } else {
       fetchMethod = "public_gviz";
+      const isValidCsv = (r) => r && r.statusCode === 200 && r.body && r.body.length >= 500 && !r.body.trim().startsWith("<!");
       let csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${sheetGid}`;
       let res = await httpsRequest(csvUrl);
-      if (res.statusCode !== 200 || !res.body || res.body.length < 500) {
+      if (!isValidCsv(res)) {
         csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
         res = await httpsRequest(csvUrl);
       }
-      if (res.statusCode === 200 && res.body) {
+      if (isValidCsv(res)) {
         rows = parseCSV(res.body);
       } else {
-        throw new Error(`Gagal membaca Google Sheets publik (HTTP ${res.statusCode}).`);
+        throw new Error(`Gagal membaca Google Sheets publik (HTTP ${res ? res.statusCode : "ERR"}).`);
       }
     }
 
     const parsedData = parseSheetRows(rows);
     if (!parsedData || parsedData.totalRelations === 0) {
-      throw new Error("Tidak ada baris relasi Sasaran 4-dev yang valid ditemukan.");
+      throw new Error("Tidak ada baris relasi Sasaran 4 yang valid ditemukan.");
     }
 
     return {
@@ -325,10 +331,12 @@ exports.handler = async function (event, context) {
       body: JSON.stringify({
         success: true,
         source: "google_sheets",
+        isFallback: false,
         method: fetchMethod,
         configured: true,
         spreadsheetId,
         sheetName,
+        sheetGid,
         updatedAt: new Date().toISOString(),
         totalRelations: parsedData.totalRelations,
         relations: parsedData.relations,
@@ -343,8 +351,12 @@ exports.handler = async function (event, context) {
         body: JSON.stringify({
           success: true,
           source: "verified_baseline_fallback",
+          isFallback: true,
           configured: true,
-          warning: `Gagal membaca Google Sheets: ${err.message}. Menggunakan dataset baseline terverifikasi.`,
+          spreadsheetId,
+          sheetName,
+          sheetGid,
+          warning: `Gagal membaca Google Sheets: ${err.message}. Menggunakan dataset baseline final terverifikasi.`,
           updatedAt: new Date().toISOString(),
           totalRelations: fallbackBaseline.total,
           relations: fallbackBaseline.relations,
