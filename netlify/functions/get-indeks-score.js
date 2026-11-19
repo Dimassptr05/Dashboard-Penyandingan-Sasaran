@@ -3,7 +3,7 @@
  * NETLIFY FUNCTION: get-indeks-score
  * Endpoint: /.netlify/functions/get-indeks-score (atau /api/indeks-score)
  * Single Source of Truth: Google Sheets Evaluasi Indeks Score 2025
- * Default Tab: "Sheet2" (GID: 860170702) — 642 Instansi, 20 Indikator
+ * Default Tab: "Sheet1" (GID: 0) — 642 Instansi, 20 Indikator (Kolom Biru)
  *
  * TERPISAH TOTAL dari konfigurasi Sasaran 4 (tidak membaca SPREADSHEET_ID,
  * SHEET_NAME_SASARAN4_DEV, atau SHEET_GID_SASARAN4_DEV).
@@ -445,8 +445,8 @@ exports.handler = async function (event) {
 
   // Konfigurasi khusus Analisis Indeks Score 2025 (independen dari Sasaran 4)
   const spreadsheetId = process.env.INDEKS_SCORE_SPREADSHEET_ID || "1i4kBAqUUpxD6NfBFOPsibPMX902KGFP7Wz3JaJ1nzRQ";
-  const sheetName = process.env.INDEKS_SCORE_SHEET_NAME || "Sheet2";
-  const sheetGid = process.env.INDEKS_SCORE_SHEET_GID || "860170702";
+  const sheetName = process.env.INDEKS_SCORE_SHEET_NAME || "Sheet1";
+  const sheetGid = process.env.INDEKS_SCORE_SHEET_GID || "0";
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const apiKey = process.env.GOOGLE_API_KEY;

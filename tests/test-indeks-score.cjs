@@ -49,8 +49,8 @@ async function run() {
     const body = JSON.parse(res.body);
     assert.equal(body.success, true);
     assert.equal(body.spreadsheetId, "1i4kBAqUUpxD6NfBFOPsibPMX902KGFP7Wz3JaJ1nzRQ");
-    assert.equal(body.sheetName, "Sheet2");
-    assert.equal(body.sheetGid, "860170702");
+    assert.equal(body.sheetName, "Sheet1");
+    assert.equal(body.sheetGid, "0");
     assert.equal(body.totalInstansi, 642, "Harus tepat 642 instansi");
     assert.equal(body.totalIndicators, 20, "Harus tepat 20 indikator");
     assert.equal(typeof body.isFallback, "boolean");

@@ -310,8 +310,8 @@
         const dt = meta.updatedAt ? new Date(meta.updatedAt) : new Date();
         const t = dt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
         const d = dt.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit" });
-        badge.textContent = `Data Live Google Sheets: ${d} ${t} (${meta.sheetName || "Sheet2"})`;
-        if (sub) sub.textContent = `Profil capaian ${rows.length} instansi pada ${inds.length} indikator evaluasi 2025 · Sumber live: Google Sheets (${meta.sheetName || "Sheet2"})`;
+        badge.textContent = `Data Live Google Sheets: ${d} ${t} (${meta.sheetName || "Sheet1"})`;
+        if (sub) sub.textContent = `Profil capaian ${rows.length} instansi pada ${inds.length} indikator evaluasi 2025 · Sumber live: Google Sheets (${meta.sheetName || "Sheet1"})`;
       } else if (meta.source === "verified_baseline_fallback") {
         badge.classList.add("fallback");
         badge.textContent = "Fallback Baseline Terverifikasi (Evaluasi 2025)";
