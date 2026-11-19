@@ -730,3 +730,129 @@ main {
     transition: none !important;
   }
 }
+
+
+/* ---------- Tambahan Komponen Analisis Indeks Score 2025 ---------- */
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.source-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+
+.source-badge.live {
+  background: var(--green-soft);
+  border-color: #a7f3d0;
+  color: var(--green-ink);
+}
+
+.source-badge.live::before {
+  background: var(--green);
+}
+
+.source-badge.fallback {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.source-badge.fallback::before {
+  background: var(--amber);
+}
+
+.toolbar select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  background: #f1f5f9 !important;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pagination button {
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: var(--line-strong);
+}
+
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.metric-inline {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.wide-table {
+  min-width: 1080px;
+}
+
+.missing-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px 20px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  header {
+    padding: 14px 16px;
+  }
+  main {
+    padding: 14px 16px 24px;
+  }
+  .toolbar-field {
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+}

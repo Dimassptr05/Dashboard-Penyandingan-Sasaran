@@ -52,10 +52,12 @@ let sasaran3Handler = null;
 let sasaran4Handler = null;
 let sasaran5Handler = null;
 let externalHandler = null;
+let indeksScoreHandler = null;
 try { sasaran3Handler = require("../netlify/functions/get-sasaran3.js").handler; } catch (e) {}
 try { sasaran4Handler = require("../netlify/functions/get-sasaran4.js").handler; } catch (e) {}
 try { sasaran5Handler = require("../netlify/functions/get-sasaran5.js").handler; } catch (e) {}
 try { externalHandler = require("../netlify/functions/get-external.js").handler; } catch (e) {}
+try { indeksScoreHandler = require("../netlify/functions/get-indeks-score.js").handler; } catch (e) {}
 
 // 4. Server HTTP Utama
 const server = http.createServer(async (req, res) => {
@@ -77,6 +79,8 @@ const server = http.createServer(async (req, res) => {
     apiHandler = sasaran5Handler;
   } else if (pathname === "/api/sasaran1" || pathname === "/api/external" || pathname === "/.netlify/functions/get-external") {
     apiHandler = externalHandler;
+  } else if (pathname === "/api/indeks-score" || pathname === "/.netlify/functions/get-indeks-score") {
+    apiHandler = indeksScoreHandler;
   }
 
   if (apiHandler) {

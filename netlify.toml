@@ -32,6 +32,11 @@
   to = "/.netlify/functions/get-external"
   status = 200
 
+[[redirects]]
+  from = "/api/indeks-score"
+  to = "/.netlify/functions/get-indeks-score"
+  status = 200
+
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
