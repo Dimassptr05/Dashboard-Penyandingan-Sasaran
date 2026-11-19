@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=20261111_v495">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261118_v496">
 </head>
 
 <body>
@@ -543,13 +543,18 @@
       </section>
     </div>
     <main class="main-content analysis-score-view" id="analysisScoreView" hidden>
-      <div class="analysis-score-toolbar">
+      <nav class="analysis-score-toolbar" aria-label="Breadcrumb">
         <button class="sidebar-toggle" id="btnAnalysisSidebarToggle" type="button" aria-controls="primarySidebar"
           aria-expanded="true" aria-label="Sembunyikan navigasi" title="Sembunyikan navigasi">
           <span aria-hidden="true">☰</span>
         </button>
-      </div>
-      <iframe title="Analisis Indeks Score" data-src="assets/analisis-indeks-score.html"></iframe>
+        <div class="breadcrumbs">
+          <span class="bc-item">Portal RB</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item active">Analisis Indeks Score</span>
+        </div>
+      </nav>
+      <iframe title="Analisis Indeks Score" data-src="assets/analisis-indeks-score.html?v=20261118_v496"></iframe>
     </main>
   </div>
 
@@ -643,6 +648,7 @@
         analysisView.hidden = !visible;
         analysisMenu.classList.toggle("active", visible);
         if (visible) {
+          relationMenus.forEach(button => button.classList.remove("active"));
           if (analysisFrame.dataset.src) {
             analysisFrame.src = analysisFrame.dataset.src;
             delete analysisFrame.dataset.src;

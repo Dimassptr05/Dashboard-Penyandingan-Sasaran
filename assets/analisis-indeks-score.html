@@ -1,51 +1,12 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Analisis Deskriptif Indeks Score Evaluasi 2025</title>
-<style>
-:root{--navy:#102a43;--blue:#1769aa;--cyan:#39a7d8;--green:#16845b;--red:#c64b55;--amber:#d69a26;--bg:#f3f6fa;--ink:#243447;--muted:#66788a;--line:#e2e8f0;--white:#fff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink)}
-select, .toolbar select, #selectInst, #selectInd, #filterStatus{
- color:#102a43 !important;
- -webkit-text-fill-color:#102a43 !important;
- background:#ffffff !important;
- font-weight:650 !important;
- opacity:1 !important;
-}
-select option, .toolbar select option, #selectInst option, #selectInd option, #filterStatus option{
- color:#102a43 !important;
- background-color:#ffffff !important;
- font-weight:500 !important;
-}
-.toolbar select:focus{outline:2px solid #4b9bd0;outline-offset:1px;border-color:#1769aa}
-header{background:linear-gradient(120deg,#102a43,#145b8d);color:white;padding:26px max(22px,calc((100vw - 1440px)/2));}
-h1{font-size:24px;margin:0 0 7px}header p{margin:0;color:#d8e8f5;font-size:13px}
-main{max-width:1440px;margin:auto;padding:22px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.toolbar input,.toolbar select{background:white;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:13px;color:var(--ink);min-width:210px}
-.coverage-insight{margin:-2px 0 15px;padding:16px 18px}.insight-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--navy);margin-bottom:10px}.insight-head span{color:var(--muted)}.distribution-track{height:15px;background:#edf1f5;border-radius:20px;overflow:hidden;display:flex}.distribution-good{background:var(--green);height:100%}.distribution-below{background:var(--red);height:100%}.distribution-labels{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;font-weight:650}.good-label{color:var(--green)}.below-label{color:var(--red)}.coverage-note{font-size:11px;line-height:1.5;color:var(--muted);margin:10px 0 0}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px}.card{background:white;border:1px solid var(--line);border-radius:13px;padding:17px;box-shadow:0 3px 12px #102a4308}
-.kpi-label{font-size:12px;color:var(--muted)}.kpi-value{font-size:28px;font-weight:750;margin:7px 0 3px;color:var(--navy)}.kpi-note{font-size:11px;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:15px;margin-bottom:15px}.section-title{font-size:16px;font-weight:700;margin:0 0 4px;color:var(--navy)}.section-sub{font-size:12px;color:var(--muted);margin:0 0 15px}
-.legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin:8px 0 14px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.barrow{display:grid;grid-template-columns:minmax(130px,1.3fr) 2fr 48px;gap:10px;align-items:center;margin:10px 0;font-size:12px}.barlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.track{height:13px;background:#edf1f5;border-radius:10px;overflow:hidden;display:flex}.goodbar{background:var(--green)}.badbar{background:var(--red)}.barcount{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
-.scroll{max-height:520px;overflow:auto}.table{width:100%;border-collapse:collapse;font-size:12px}.table th{position:sticky;top:0;background:#f5f8fb;color:#506174;text-align:left;font-weight:650}.clickable-pill{border:0;cursor:pointer;font:inherit;min-width:36px}.clickable-pill:hover{filter:brightness(.94);outline:2px solid #9bb7cc;outline-offset:2px}.sort-head{border:0;background:transparent;color:#40566b;font:inherit;font-weight:700;cursor:pointer;padding:0}.sort-head:hover{color:#102a43;text-decoration:underline}.table th,.table td{padding:10px 9px;border-bottom:1px solid var(--line);vertical-align:middle}.table tr:hover td{background:#f8fbfd}
-.pill{display:inline-block;padding:4px 7px;border-radius:20px;font-size:10px;font-weight:650}.pill.good{background:#e5f5ee;color:#14734e}.pill.bad{background:#fcebed;color:#ae3945}.pill.na{background:#eef1f4;color:#657384}
-.range{font-size:11px;color:#40566b;line-height:1.5}.muted{color:var(--muted)}.note{border-left:3px solid var(--amber);background:#fff9ec;padding:12px 14px;border-radius:7px;font-size:12px;line-height:1.55;margin:0 0 15px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 11px;font-size:12px;cursor:pointer}.btn:hover{background:#eef6fb}#instTable button.btn{
- color:#102a43 !important;
- -webkit-text-fill-color:#102a43 !important;
- background:#ffffff !important;
- border:1px solid #d7e1eb !important;
- font-weight:600 !important;
- opacity:1 !important;
-}
-#instTable button.btn:hover{
- color:#0b2239 !important;
- -webkit-text-fill-color:#0b2239 !important;
- background:#eef6fb !important;
-}
-.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin:0 0 16px;padding-bottom:8px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;color:#526477;padding:12px 17px;border-radius:9px 9px 0 0;font-weight:700;font-size:13px;cursor:pointer}.tab.active{background:#eaf4fb;color:#145b8d;border-color:#b9d7e9;box-shadow:inset 0 -3px #1769aa}.tab-panel{display:none}.tab-panel.active{display:block}.tab-panel .grid2{margin-top:0}@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}@media(max-width:560px){main{padding:12px}.kpis{grid-template-columns:1fr 1fr}.kpi-value{font-size:22px}.barrow{grid-template-columns:105px 1fr 36px}header{padding:22px 15px}}
-</style></head><body>
-<header><h1>Analisis Deskriptif Indeks Score Evaluasi 2025</h1><p>Profil capaian indikator per instansi dan profil capaian indikator lintas instansi · Sumber: indeks-score-evaluasi-2025_fix.xls</p></header>
+<title>Analisis Indeks Score — Portal Relasi RB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+  rel="stylesheet">
+<link rel="stylesheet" href="css/analisis-indeks-score.css?v=20261118_v496"></head><body>
+<header><h1>Analisis Indeks Score</h1><p>Evaluasi 2025 — Profil capaian indikator per instansi dan lintas instansi · Sumber: indeks-score-evaluasi-2025_fix.xls</p></header>
 <main> 
 <div class="tabs" role="tablist" aria-label="Jenis analisis">
 <button class="tab active" id="tabInst" role="tab" aria-selected="true" onclick="switchTab('inst')">01 · Analisis per Instansi</button>
@@ -53,20 +14,25 @@ main{max-width:1440px;margin:auto;padding:22px}
 </div>
 <div class="tab-panel active" id="panelInst">
 <div class="toolbar">
-<select id="selectInst" class="readable-select"><option value="all">Semua instansi</option></select>
-<select id="filterStatus" class="readable-select"><option value="all">Semua instansi</option><option value="high">Indikator Baik+ terbanyak</option><option value="low">Indikator di bawah Baik terbanyak</option></select>
+<label class="toolbar-field"><span>Instansi</span><select id="selectInst" class="readable-select" aria-label="Pilih instansi"><option value="all">Semua instansi</option></select></label>
+<label class="toolbar-field"><span>Urutan</span><select id="filterStatus" class="readable-select" aria-label="Urutkan daftar instansi"><option value="all">Nama instansi (A–Z)</option><option value="high">Indikator Baik+ terbanyak</option><option value="low">Indikator di bawah Baik terbanyak</option></select></label>
+<div class="toolbar-actions">
 <button class="btn" onclick="resetInstFilters()">Reset filter</button>
-<button class="btn" onclick="downloadCSV()">Unduh rekap CSV</button>
+<button class="btn btn-primary" onclick="downloadCSV()">Unduh rekap CSV</button>
 </div>
-<div class="kpis" id="kpis"></div>\n<div class="card coverage-insight" id="coverageInsight"></div>
+</div>
+<div class="kpis" id="kpis"></div>
+<div class="card coverage-insight" id="coverageInsight"></div>
 <div class="note"><b>Catatan metodologis:</b> Status Baik+ / di bawah Baik dibaca dari kolom kategori yang tersedia pada file. Label kategori ditafsirkan secara ordinal (misalnya Baik/Sangat Baik = Baik+, sedangkan Cukup/Kurang = di bawah Baik). Untuk indikator bertingkat, ambang ditetapkan berdasarkan jenjang yang tertulis pada label kategori. <b>Persentase ringkasan dihitung dari pasangan instansi–indikator yang memiliki kategori (Baik+ dibandingkan seluruh data yang terklasifikasi), bukan persentase instansi yang seluruh indikatornya sudah Baik.</b> Rentang angka yang ditampilkan adalah rentang nilai aktual pada baris berlabel Baik+, bukan otomatis batas target atau ambang resmi. File tidak menyediakan batas numerik Baik yang konsisten untuk seluruh indikator. Nilai tanpa kategori tidak dimasukkan dalam hitungan status.</div>
 <section class="card" style="margin-bottom:15px"><h2 class="section-title">Profil per instansi</h2><p class="section-sub">Jumlah indikator yang sudah mencapai kategori Baik atau lebih dan yang masih di bawah Baik. Pilih instansi untuk melihat rinciannya.</p><div class="scroll"><table class="table"><thead><tr><th>Instansi</th><th>Baik atau lebih</th><th>Di bawah Baik</th><th>Belum terklasifikasi</th><th>% Baik+ dari terklasifikasi</th><th>Profil</th></tr></thead><tbody id="instTable"></tbody></table></div></section>
 <section class="card"><h2 class="section-title" id="detailTitle">Detail indikator per instansi</h2><p class="section-sub" id="detailSub">Klik nama instansi pada tabel untuk menampilkan kategori dan nilai masing-masing indikator.</p><div class="scroll"><table class="table"><thead><tr><th>Indikator</th><th><button class="sort-head" id="detailSortButton" type="button" onclick="toggleDetailSort()">Nilai <span id="detailSortArrow">↓</span></button></th><th>Kategori sumber</th><th>Status analisis</th><th>Rentang aktual Baik+ lintas instansi</th></tr></thead><tbody id="detailTable"><tr><td colspan="5" class="muted">Belum ada instansi dipilih.</td></tr></tbody></table></div></section>
 </div>
 <div class="tab-panel" id="panelInd">
 <div class="toolbar">
-<select id="selectInd" class="readable-select"><option value="all">Semua indikator</option></select>
-<button class="btn" onclick="resetIndFilters()">Reset pencarian</button>
+<label class="toolbar-field"><span>Indikator</span><select id="selectInd" class="readable-select" aria-label="Pilih indikator"><option value="all">Semua indikator</option></select></label>
+<div class="toolbar-actions">
+<button class="btn" onclick="resetIndFilters()">Reset filter</button>
+</div>
 </div>
 <div class="grid2">
 <section class="card"><h2 class="section-title">Profil per indikator</h2><p class="section-sub">Jumlah instansi dengan kategori Baik+ dibandingkan yang masih di bawah Baik. Diurutkan dari jumlah di bawah Baik terbanyak.</p><div class="legend"><span><i class="dot" style="background:var(--green)"></i>Baik atau lebih</span><span><i class="dot" style="background:var(--red)"></i>Di bawah Baik</span></div><div id="indicatorBars" class="scroll"></div></section>
@@ -77,11 +43,11 @@ main{max-width:1440px;margin:auto;padding:22px}
 <p class="section-sub" id="indicatorDetailSub">Pilih satu indikator pada dropdown untuk melihat daftar instansi yang sudah Baik atau lebih dan yang masih di bawah Baik.</p>
 <div class="grid2" style="margin-bottom:0">
 <div>
-<h3 style="font-size:14px;color:var(--green);margin:0 0 10px">Baik atau lebih <span id="goodInstCount" class="pill good">0 instansi</span></h3>
+<h3 style="font-size:14px;color:var(--green-ink);margin:0 0 10px">Baik atau lebih <span id="goodInstCount" class="pill good">0 instansi</span></h3>
 <div class="scroll"><table class="table"><thead><tr><th>Instansi</th><th>Nilai</th><th>Kategori</th></tr></thead><tbody id="goodInstList"><tr><td colspan="3" class="muted">Pilih indikator.</td></tr></tbody></table></div>
 </div>
 <div>
-<h3 style="font-size:14px;color:var(--red);margin:0 0 10px">Di bawah Baik <span id="belowInstCount" class="pill bad">0 instansi</span></h3>
+<h3 style="font-size:14px;color:var(--red-ink);margin:0 0 10px">Di bawah Baik <span id="belowInstCount" class="pill bad">0 instansi</span></h3>
 <div class="scroll"><table class="table"><thead><tr><th>Instansi</th><th>Nilai</th><th>Kategori</th></tr></thead><tbody id="belowInstList"><tr><td colspan="3" class="muted">Pilih indikator.</td></tr></tbody></table></div>
 </div>
 </div>
@@ -104,7 +70,7 @@ function drawKpis(){
   ["Dimensi evaluasi",fmt(inds.length),"Indikator yang dianalisis"],
   ["Tingkat ketercapaian Baik+",goodPct.toLocaleString("id-ID",{minimumFractionDigits:1,maximumFractionDigits:1})+"%",fmt(g)+" pasangan instansi–indikator"],
   ["Area yang perlu ditingkatkan",belowPct.toLocaleString("id-ID",{minimumFractionDigits:1,maximumFractionDigits:1})+"%",fmt(b)+" pasangan instansi–indikator"]
- ].map((x,i)=>`<div class="card"><div class="kpi-label">${x[0]}</div><div class="kpi-value" ${i===2?'style="color:var(--green)"':i===3?'style="color:var(--red)"':''}>${x[1]}</div><div class="kpi-note">${x[2]}</div></div>`).join("");
+ ].map((x,i)=>`<div class="card"><div class="kpi-label">${x[0]}</div><div class="kpi-value" ${i===2?'style="color:var(--green-ink)"':i===3?'style="color:var(--red-ink)"':''}>${x[1]}</div><div class="kpi-note">${x[2]}</div></div>`).join("");
  const info=document.getElementById("coverageInsight");
  if(info) info.innerHTML=`<div class="insight-head"><b>Distribusi capaian pada data yang terklasifikasi</b><span>${fmt(classified)} dari ${fmt(total)} pasangan data</span></div><div class="distribution-track"><div class="distribution-good" style="width:${goodPct}%"></div><div class="distribution-below" style="width:${belowPct}%"></div></div><div class="distribution-labels"><span class="good-label">Baik atau lebih: ${goodPct.toLocaleString("id-ID",{minimumFractionDigits:1,maximumFractionDigits:1})}%</span><span class="below-label">Di bawah Baik: ${belowPct.toLocaleString("id-ID",{minimumFractionDigits:1,maximumFractionDigits:1})}%</span></div><p class="coverage-note">Catatan kelengkapan data: ${fmt(n)} pasangan instansi–indikator (${missingPct.toLocaleString("id-ID",{minimumFractionDigits:1,maximumFractionDigits:1})}% dari seluruh kombinasi) belum terklasifikasi dan tidak dimasukkan ke dalam perhitungan persentase capaian.</p>`;
 }
