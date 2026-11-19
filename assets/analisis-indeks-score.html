@@ -235,15 +235,15 @@
       </section>
 
       <section class="card" style="margin-top:15px">
-        <h2 class="section-title">Indikator yang belum terinput pada dataset</h2>
-        <p class="section-sub">Indikator berikut belum tersedia dalam file sumber dan tidak dimasukkan dalam perhitungan 20 indikator penilaian saat ini.</p>
+        <h2 class="section-title">Indikator tanpa kolom kategori pada dataset (6 indikator)</h2>
+        <p class="section-sub">Keenam indikator kolom biru berikut sudah dibaca nilai numeriknya dalam 26 indikator penilaian, namun belum memiliki kolom kategori sumber sehingga berstatus <em>Belum terklasifikasi</em> dan tidak masuk denominator Baik+ / di bawah Baik.</p>
         <ul class="missing-list">
           <li>Opini BPK</li>
           <li>Tindak Lanjut Rekomendasi</li>
           <li>Persentase Penyederhanaan Struktur Organisasi</li>
           <li>Tingkat Keberhasilan Pembangunan ZI</li>
           <li>Indeks SPBE</li>
-          <li>Capaian IKU Kementerian / Lembaga</li>
+          <li>Capaian IKU Kementerian/Lembaga</li>
         </ul>
       </section>
     </div>
@@ -337,9 +337,10 @@
       }
 
       stats = inds.map((ind, j) => {
-        let good = 0, bad = 0, na = 0, goodVals = [];
+        let good = 0, bad = 0, na = 0, hasValue = 0, goodVals = [];
         rows.forEach(r => {
           const x = r[1][j];
+          if (x[0] !== null) hasValue++;
           if (x[2] === "good") {
             good++;
             if (x[0] !== null) goodVals.push(x[0]);
@@ -354,6 +355,7 @@
           good,
           bad,
           na,
+          hasValue,
           total: good + bad,
           lo: goodVals.length ? Math.min(...goodVals) : null,
           hi: goodVals.length ? Math.max(...goodVals) : null
@@ -404,6 +406,9 @@
         const j = inds.findIndex(z => z.name === x.name);
         const pop = populationStats[j];
         const classified = x.good + x.bad;
+        if (classified === 0) {
+          return `<tr><td>${esc(x.name)}</td><td>${x.hasValue} nilai</td><td colspan="2"><span class="pill na">Belum terklasifikasi (tanpa kolom kategori)</span></td></tr>`;
+        }
         return `<tr><td>${esc(x.name)}</td><td>${pop} instansi</td><td><span class="pill good">${x.good} / ${pctText(x.good, classified)}</span></td><td><span class="pill bad">${x.bad} / ${pctText(x.bad, classified)}</span></td></tr>`;
       }).join("");
       document.getElementById("distributionPagination").innerHTML = `<span>Halaman ${distributionPage} dari ${pages} · ${data.length} indikator</span><button type="button" ${distributionPage <= 1 ? "disabled" : ""} onclick="changeDistributionPage(-1)">Sebelumnya</button><button type="button" ${distributionPage >= pages ? "disabled" : ""} onclick="changeDistributionPage(1)">Berikutnya</button>`;

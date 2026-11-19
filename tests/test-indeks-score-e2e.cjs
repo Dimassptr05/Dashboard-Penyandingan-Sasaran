@@ -27,7 +27,7 @@ const { pathToFileURL } = require("node:url");
     assert.ok(badgeText.length > 5, "Badge sumber data harus tampil");
     const kpiVals = await frame.locator("#kpis .kpi-value").allTextContents();
     assert.equal(kpiVals[0].trim(), "642", `KPI cakupan evaluasi harus 642, dapat: ${kpiVals[0]}`);
-    assert.equal(kpiVals[1].trim(), "20", `KPI jumlah indikator harus 20, dapat: ${kpiVals[1]}`);
+    assert.equal(kpiVals[1].trim(), "26", `KPI jumlah indikator harus 26, dapat: ${kpiVals[1]}`);
 
     // 3. Tab 01: Filter kategori instansi, urutan, detail, sorting nilai, pagination, CSV
     await frame.locator("#selectInstType").selectOption("Kementerian");
@@ -39,7 +39,7 @@ const { pathToFileURL } = require("node:url");
     await frame.locator("#filterStatus").selectOption("high");
     await frame.locator("#instTable tr button.btn").first().click();
     const detailRows = await frame.locator("#detailTable tr").count();
-    assert.equal(detailRows, 20, "Detail instansi harus menampilkan 20 indikator");
+    assert.equal(detailRows, 26, "Detail instansi harus menampilkan 26 indikator");
 
     await frame.locator("#detailSortButton").click();
     assert.ok((await frame.locator("#detailSortArrow").textContent()).includes("↑"), "Sort nilai detail harus berubah ke ascending");

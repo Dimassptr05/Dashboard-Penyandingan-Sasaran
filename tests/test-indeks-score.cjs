@@ -52,7 +52,7 @@ async function run() {
     assert.equal(body.sheetName, "Sheet1");
     assert.equal(body.sheetGid, "0");
     assert.equal(body.totalInstansi, 642, "Harus tepat 642 instansi");
-    assert.equal(body.totalIndicators, 20, "Harus tepat 20 indikator");
+    assert.equal(body.totalIndicators, 26, "Harus tepat 26 indikator (seluruh kolom biru Sheet1)");
     assert.equal(typeof body.isFallback, "boolean");
 
     // Cek 87 entri IPP B- - Baik dengan Catatan semuanya 'below'

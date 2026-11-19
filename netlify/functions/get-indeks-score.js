@@ -3,7 +3,7 @@
  * NETLIFY FUNCTION: get-indeks-score
  * Endpoint: /.netlify/functions/get-indeks-score (atau /api/indeks-score)
  * Single Source of Truth: Google Sheets Evaluasi Indeks Score 2025
- * Default Tab: "Sheet1" (GID: 0) — 642 Instansi, 20 Indikator (Kolom Biru)
+ * Default Tab: "Sheet1" (GID: 0) — 642 Instansi, 26 Indikator (Kolom Biru)
  *
  * TERPISAH TOTAL dari konfigurasi Sasaran 4 (tidak membaca SPREADSHEET_ID,
  * SHEET_NAME_SASARAN4_DEV, atau SHEET_GID_SASARAN4_DEV).
@@ -15,9 +15,13 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
+// 26 Indikator Penilaian sesuai seluruh kolom biru (#83cceb, kolom E–AX) pada Sheet1.
+// 20 indikator memiliki kolom Kategori sumber; 6 indikator lainnya tetap dibaca nilainya dengan status belum terklasifikasi.
 const INDICATOR_SPECS = [
+  { name: "Persentase Penyederhanaan Struktur Organisasi", catname: null },
   { name: "Tingkat Capaian Sistem Kerja untuk Penyederhanaan Birokrasi", catname: "Kategori Tingkat Capaian Sistem Kerja untuk Penyederhanaan Birokrasi" },
   { name: "Tingkat Maturitas SPIP", catname: "Kategori Tingkat Maturitas SPIP" },
+  { name: "Tingkat Keberhasilan Pembangunan ZI", catname: null },
   { name: "Nilai SAKIP", catname: "Kategori Nilai SAKIP" },
   { name: "Indeks Perencanaan Pembangunan", catname: "Kategori Indeks Perencanaan Pembangunan" },
   { name: "Tingkat Implementasi Kebijakan Arsitektur SPBE", catname: "Kategori Tingkat Implementasi Kebijakan Arsitektur SPBE" },
@@ -32,7 +36,11 @@ const INDICATOR_SPECS = [
   { name: "Indeks Sistem Merit", catname: "Kategori Indeks Sistem Merit" },
   { name: "Indeks Pelayanan Publik", catname: "Kategori Indeks Pelayanan Publik" },
   { name: "Tingkat Kepatuhan Standar Pelayanan Publik", catname: "Kategori Tingkat Kepatuhan Standar Pelayanan Publik" },
+  { name: "Indeks SPBE", catname: null },
   { name: "Capaian Prioritas Nasional", catname: "Kategori Capaian Prioritas Nasional" },
+  { name: "Capaian IKU Kementerian/Lembaga", catname: null },
+  { name: "Opini BPK", catname: null },
+  { name: "Tindak Lanjut Rekomendasi", catname: null },
   { name: "Indeks BerAkhlak", catname: "Kategori Indeks BerAkhlak" },
   { name: "Survei Penilaian Integritas", catname: "Kategori Survei Penilaian Integritas" },
   { name: "Survei Kepuasan Masyarakat", catname: "Kategori Survei Kepuasan Masyarakat" }
@@ -323,8 +331,8 @@ function parseSheetRows(rows) {
   const missingHeaders = [];
   for (const spec of INDICATOR_SPECS) {
     const v = headers.indexOf(spec.name);
-    const c = headers.indexOf(spec.catname);
-    if (v === -1 || c === -1) {
+    const c = spec.catname ? headers.indexOf(spec.catname) : -1;
+    if (v === -1 || (spec.catname && c === -1)) {
       missingHeaders.push(spec.name);
     } else {
       indicators.push({ v, c, name: spec.name, catname: spec.catname });
@@ -354,7 +362,7 @@ function parseSheetRows(rows) {
 
     const cells = indicators.map((ind) => {
       const val = parseScoreValue(r[ind.v]);
-      const rawCat = r[ind.c] !== undefined && r[ind.c] !== null ? String(r[ind.c]).trim() : "";
+      const rawCat = ind.c >= 0 && r[ind.c] !== undefined && r[ind.c] !== null ? String(r[ind.c]).trim() : "";
       const cat = rawCat === "" ? null : rawCat;
       const status = classifyCategory(ind.name, cat);
       if (status === "good") totalGood++;
