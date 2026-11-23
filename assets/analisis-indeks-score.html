@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/analisis-indeks-score.css?v=20261119_v2025">
+  <link rel="stylesheet" href="css/analisis-indeks-score.css?v=20261123_search">
 </head>
 <body>
   <header>
@@ -652,6 +652,7 @@
       document.getElementById("selectInstType").value = "all";
       populateInstanceOptions();
       document.getElementById("selectInst").value = "all";
+      syncSearchableSelect(document.getElementById("selectInst"));
       document.getElementById("filterStatus").value = "all";
       drawInst();
     }
@@ -679,6 +680,7 @@
 
     function resetIndFilters() {
       document.getElementById("selectInd").value = "all";
+      syncSearchableSelect(document.getElementById("selectInd"));
       document.getElementById("selectIndType").value = "all";
       document.getElementById("selectIndProvince").value = "all";
       document.getElementById("selectIndRegency").value = "all";
@@ -722,6 +724,174 @@
       return csv;
     }
 
+    const searchableRegistry = new WeakMap();
+
+    function initSearchableSelect(selectEl, placeholder) {
+      if (!selectEl || searchableRegistry.has(selectEl)) return;
+      selectEl.classList.add("searchable-native-select");
+      selectEl.tabIndex = -1;
+
+      const wrap = document.createElement("div");
+      wrap.className = "searchable-select";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "searchable-input";
+      input.placeholder = placeholder;
+      input.autocomplete = "off";
+      input.setAttribute("role", "combobox");
+      input.setAttribute("aria-expanded", "false");
+      input.setAttribute("aria-autocomplete", "list");
+      input.setAttribute("aria-label", selectEl.getAttribute("aria-label") || placeholder);
+
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "searchable-clear";
+      clearBtn.textContent = "×";
+      clearBtn.title = "Tampilkan semua";
+      clearBtn.setAttribute("aria-label", "Hapus pilihan");
+      clearBtn.hidden = true;
+
+      const menu = document.createElement("ul");
+      menu.className = "searchable-menu";
+      menu.setAttribute("role", "listbox");
+      menu.hidden = true;
+
+      wrap.append(input, clearBtn, menu);
+      selectEl.insertAdjacentElement("afterend", wrap);
+
+      let activeIdx = -1;
+      let visibleOptions = [];
+
+      function getOptions() {
+        return [...selectEl.options].map(o => ({ value: o.value, label: o.textContent }));
+      }
+
+      function syncDisplay() {
+        const cur = selectEl.value;
+        const matched = [...selectEl.options].find(o => o.value === cur);
+        input.value = (cur && cur !== "all" && matched) ? matched.textContent : "";
+        clearBtn.hidden = !input.value;
+      }
+
+      function closeMenu() {
+        menu.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        activeIdx = -1;
+      }
+
+      function choose(val) {
+        selectEl.value = val;
+        syncDisplay();
+        closeMenu();
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function renderMenu(query) {
+        const q = (query || "").trim().toLowerCase();
+        const opts = getOptions();
+        visibleOptions = q
+          ? opts.filter(o => o.value === "all" || o.label.toLowerCase().includes(q))
+          : opts;
+        // Jika mengetik kata kunci, sembunyikan "Semua..." bila ada hasil spesifik agar Enter langsung memilih hasil pertama
+        if (q && visibleOptions.some(o => o.value !== "all")) {
+          visibleOptions = visibleOptions.filter(o => o.value !== "all");
+        }
+        activeIdx = visibleOptions.length ? 0 : -1;
+        if (!visibleOptions.length) {
+          menu.innerHTML = '<li class="searchable-empty">Tidak ditemukan.</li>';
+        } else {
+          menu.innerHTML = visibleOptions.map((o, i) => {
+            const cls = [
+              "searchable-option",
+              o.value === selectEl.value ? "selected" : "",
+              i === activeIdx ? "active" : ""
+            ].filter(Boolean).join(" ");
+            return `<li class="${cls}" role="option" data-val="${esc(o.value)}">${esc(o.label)}</li>`;
+          }).join("");
+        }
+        menu.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+      }
+
+      input.addEventListener("focus", () => {
+        input.select();
+        renderMenu("");
+      });
+      input.addEventListener("click", () => {
+        if (menu.hidden) renderMenu("");
+      });
+      input.addEventListener("input", () => {
+        clearBtn.hidden = !input.value;
+        renderMenu(input.value);
+        if (!input.value.trim() && selectEl.value !== "all") {
+          selectEl.value = "all";
+          selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+      input.addEventListener("keydown", (e) => {
+        if (menu.hidden && (e.key === "ArrowDown" || e.key === "Enter")) {
+          renderMenu(input.value);
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (visibleOptions.length) {
+            activeIdx = (activeIdx + 1) % visibleOptions.length;
+            updateActive();
+          }
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (visibleOptions.length) {
+            activeIdx = (activeIdx - 1 + visibleOptions.length) % visibleOptions.length;
+            updateActive();
+          }
+        } else if (e.key === "Enter") {
+          if (!menu.hidden && activeIdx >= 0 && visibleOptions[activeIdx]) {
+            e.preventDefault();
+            choose(visibleOptions[activeIdx].value);
+          }
+        } else if (e.key === "Escape") {
+          syncDisplay();
+          closeMenu();
+        }
+      });
+
+      function updateActive() {
+        const items = menu.querySelectorAll(".searchable-option");
+        items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+        if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: "nearest" });
+      }
+
+      menu.addEventListener("mousedown", (e) => {
+        const li = e.target.closest(".searchable-option");
+        if (!li) return;
+        e.preventDefault();
+        choose(li.dataset.val);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        choose("all");
+        input.focus();
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          syncDisplay();
+          closeMenu();
+        }, 120);
+      });
+
+      searchableRegistry.set(selectEl, { syncDisplay, input });
+      syncDisplay();
+    }
+
+    function syncSearchableSelect(selectEl) {
+      const entry = searchableRegistry.get(selectEl);
+      if (entry) entry.syncDisplay();
+    }
+
     function populateInstanceOptions() {
       const si = document.getElementById("selectInst");
       const type = document.getElementById("selectInstType").value;
@@ -739,6 +909,7 @@
         si.appendChild(o);
       });
       si.value = filtered.includes(previous) ? previous : "all";
+      syncSearchableSelect(si);
     }
 
     function populateDropdowns() {
@@ -755,6 +926,7 @@
           sd.appendChild(o);
         });
       sd.value = inds.some(x => x.name === prevInd) ? prevInd : "all";
+      syncSearchableSelect(sd);
     }
 
     async function syncFromAPI() {
@@ -779,6 +951,9 @@
         }
       }
     }
+
+    initSearchableSelect(document.getElementById("selectInst"), "Ketik untuk mencari instansi...");
+    initSearchableSelect(document.getElementById("selectInd"), "Ketik untuk mencari indikator...");
 
     document.getElementById("selectInst").addEventListener("change", drawInst);
     document.getElementById("selectInstType").addEventListener("change", () => { populateInstanceOptions(); drawInst(); });
