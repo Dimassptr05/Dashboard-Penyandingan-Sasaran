@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Analisis Indeks Score 2025 — Portal Relasi RB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/analisis-indeks-score.css?v=20261123_search">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1>Analisis Indeks Score Evaluasi 2025</h1>
+        <p id="headerSubtitle">Profil capaian indikator per instansi dan profil capaian indikator lintas instansi · Sumber: Evaluasi Indeks Score 2025</p>
+      </div>
+      <div class="source-badge" id="dataSourceBadge" aria-live="polite">Memuat data evaluasi 2025...</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs" role="tablist" aria-label="Jenis analisis">
+      <button class="tab active" id="tabInst" role="tab" aria-selected="true" type="button" onclick="switchTab('inst')">01 · Analisis per Instansi</button>
+      <button class="tab" id="tabInd" role="tab" aria-selected="false" type="button" onclick="switchTab('ind')">02 · Analisis per Indikator</button>
+    </div>
+
+    <!-- TAB 01: ANALISIS PER INSTANSI -->
+    <div class="tab-panel active" id="panelInst">
+      <div class="toolbar">
+        <label class="toolbar-field">
+          <span>Instansi</span>
+          <select id="selectInst" class="readable-select" aria-label="Pilih instansi">
+            <option value="all">Semua instansi</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Kategori Instansi</span>
+          <select id="selectInstType" class="readable-select" aria-label="Filter kategori instansi">
+            <option value="all">Semua kategori instansi</option>
+            <option value="Kementerian">Kementerian</option>
+            <option value="Lembaga">Lembaga</option>
+            <option value="Provinsi">Provinsi</option>
+            <option value="Kabupaten">Kabupaten</option>
+            <option value="Kota">Kota</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Urutan</span>
+          <select id="filterStatus" class="readable-select" aria-label="Urutkan daftar instansi">
+            <option value="all">Nama instansi (A–Z)</option>
+            <option value="high">Indikator Baik+ terbanyak</option>
+            <option value="low">Indikator di bawah Baik terbanyak</option>
+          </select>
+        </label>
+        <div class="toolbar-actions">
+          <button class="btn" type="button" onclick="resetInstFilters()">Reset filter</button>
+          <button class="btn btn-primary" type="button" onclick="downloadCSV()">Unduh rekap CSV</button>
+        </div>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+      <div class="card coverage-insight" id="coverageInsight"></div>
+
+      <section class="card" style="margin-bottom:15px">
+        <h2 class="section-title">Rincian distribusi capaian indikator</h2>
+        <p class="section-sub">Distribusi Baik atau lebih dan di bawah Baik per indikator. Persentase dihitung dari data yang terklasifikasi.</p>
+        <div class="scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Indikator penilaian</th>
+                <th>Populasi</th>
+                <th>Baik atau lebih</th>
+                <th>Di bawah Baik</th>
+              </tr>
+            </thead>
+            <tbody id="distributionTable"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="distributionPagination"></div>
+      </section>
+
+      <section class="card" style="margin-bottom:15px">
+        <h2 class="section-title">Profil per instansi</h2>
+        <p class="section-sub">Jumlah indikator yang sudah mencapai kategori Baik atau lebih dan yang masih di bawah Baik. Pilih instansi untuk melihat rinciannya.</p>
+        <div class="scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Instansi</th>
+                <th>Indeks RB</th>
+                <th>Baik atau lebih (jumlah / %)</th>
+                <th>Di bawah Baik (jumlah / %)</th>
+                <th>Profil capaian</th>
+              </tr>
+            </thead>
+            <tbody id="instTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="section-title" id="detailTitle">Detail indikator per instansi</h2>
+        <p class="section-sub" id="detailSub">Klik nama instansi pada tabel untuk menampilkan kategori dan nilai masing-masing indikator.</p>
+        <div class="scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Indikator</th>
+                <th>
+                  <button class="sort-head" id="detailSortButton" type="button" onclick="toggleDetailSort()">Nilai <span id="detailSortArrow">↓</span></button>
+                </th>
+                <th>Kategori sumber</th>
+                <th>Status analisis</th>
+                <th>Target Baik</th>
+              </tr>
+            </thead>
+            <tbody id="detailTable">
+              <tr><td colspan="5" class="muted">Belum ada instansi dipilih.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 02: ANALISIS PER INDIKATOR -->
+    <div class="tab-panel" id="panelInd">
+      <div class="toolbar">
+        <label class="toolbar-field">
+          <span>Indikator</span>
+          <select id="selectInd" class="readable-select" aria-label="Pilih indikator">
+            <option value="all">Semua indikator</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Kategori Instansi</span>
+          <select id="selectIndType" class="readable-select" aria-label="Filter kategori instansi per indikator">
+            <option value="all">Semua kategori instansi</option>
+            <option value="Kementerian">Kementerian</option>
+            <option value="Lembaga">Lembaga</option>
+            <option value="Provinsi">Provinsi</option>
+            <option value="Kabupaten">Kabupaten</option>
+            <option value="Kota">Kota</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Provinsi</span>
+          <select id="selectIndProvince" class="readable-select" aria-label="Filter provinsi" disabled>
+            <option value="all">Semua provinsi</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Kabupaten/Kota</span>
+          <select id="selectIndRegency" class="readable-select" aria-label="Filter kabupaten atau kota" disabled>
+            <option value="all">Semua kabupaten/kota</option>
+          </select>
+        </label>
+        <div class="toolbar-actions">
+          <button class="btn" type="button" onclick="resetIndFilters()">Reset pencarian</button>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <section class="card">
+          <h2 class="section-title">Profil per indikator</h2>
+          <p class="section-sub">Jumlah instansi dengan kategori Baik+ dibandingkan yang masih di bawah Baik. Diurutkan dari jumlah di bawah Baik terbanyak.</p>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--green)"></i>Baik atau lebih</span>
+            <span><i class="dot" style="background:var(--red)"></i>Di bawah Baik</span>
+          </div>
+          <div id="indicatorBars" class="scroll"></div>
+        </section>
+        <section class="card">
+          <h2 class="section-title">Indikator yang paling banyak belum Baik</h2>
+          <p class="section-sub">Sepuluh indikator dengan jumlah instansi di bawah kategori Baik terbanyak.</p>
+          <div id="topLow"></div>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:15px">
+        <h2 class="section-title" id="indicatorDetailTitle">Rincian instansi per indikator</h2>
+        <p class="section-sub" id="indicatorDetailSub">Pilih indikator dan gunakan filter kategori, provinsi, serta kabupaten/kota untuk mempersempit daftar instansi.</p>
+        <div class="grid2" style="margin-bottom:0">
+          <div>
+            <h3 style="font-size:14px;color:var(--green-ink);margin:0 0 10px">Baik atau lebih <span id="goodInstCount" class="pill good">0 instansi</span></h3>
+            <div class="scroll">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Peringkat</th>
+                    <th>Instansi</th>
+                    <th><button class="sort-head" type="button" onclick="toggleIndicatorListSort('good')">Nilai <span id="goodSortArrow">↓</span></button></th>
+                    <th>Kategori</th>
+                  </tr>
+                </thead>
+                <tbody id="goodInstList">
+                  <tr><td colspan="4" class="muted">Pilih indikator.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3 style="font-size:14px;color:var(--red-ink);margin:0 0 10px">Di bawah Baik <span id="belowInstCount" class="pill bad">0 instansi</span></h3>
+            <div class="scroll">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Peringkat</th>
+                    <th>Instansi</th>
+                    <th><button class="sort-head" type="button" onclick="toggleIndicatorListSort('below')">Nilai <span id="belowSortArrow">↓</span></button></th>
+                    <th>Kategori</th>
+                  </tr>
+                </thead>
+                <tbody id="belowInstList">
+                  <tr><td colspan="4" class="muted">Pilih indikator.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:15px">
+        <h2 class="section-title">Perbandingan indikator integritas dan tata kelola</h2>
+        <p class="section-sub">Penyandingan nilai SPI dengan Sistem Merit, Indeks Tata Kelola Pengadaan, SPIP, IKPA, SKM, dan IPP pada instansi yang sama.</p>
+        <div class="scroll">
+          <table class="table wide-table">
+            <thead id="comparisonHead"></thead>
+            <tbody id="comparisonBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="comparisonPagination"></div>
+      </section>
+
+      <section class="card" style="margin-top:15px">
+        <h2 class="section-title">Indikator tanpa kolom kategori pada dataset (6 indikator)</h2>
+        <p class="section-sub">Keenam indikator kolom biru berikut sudah dibaca nilai numeriknya dalam 26 indikator penilaian, namun belum memiliki kolom kategori sumber sehingga berstatus <em>Belum terklasifikasi</em> dan tidak masuk denominator Baik+ / di bawah Baik.</p>
+        <ul class="missing-list">
+          <li>Opini BPK</li>
+          <li>Tindak Lanjut Rekomendasi</li>
+          <li>Persentase Penyederhanaan Struktur Organisasi</li>
+          <li>Tingkat Keberhasilan Pembangunan ZI</li>
+          <li>Indeks SPBE</li>
+          <li>Capaian IKU Kementerian/Lembaga</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <!-- Baseline terverifikasi untuk mode offline / fallback jika API tidak tersedia -->
+  <script src="../data/indeks-score-2025-baseline.js?v=20261119_v2025"></script>
+  <script>
+    let inds = [];
+    let rows = [];
+    let stats = [];
+    let populationStats = [];
+    let instStats = [];
+    let dataSourceInfo = { source: "loading", isFallback: true };
+
+    let distributionPage = 1;
+    const distributionPageSize = 5;
+    let comparisonPage = 1;
+    const comparisonPageSize = 12;
+    let indicatorListSort = { good: "desc", below: "desc" };
+    let activeDetail = { index: null, status: "all", sort: "desc" };
+
+    const targetBaik = {
+      "Indeks Pelayanan Publik": "≥ 3,51",
+      "Survei Kepuasan Masyarakat": "≥ 76,61"
+    };
+    const comparisonNames = [
+      "Survei Penilaian Integritas",
+      "Indeks Sistem Merit",
+      "Indeks Tata Kelola Pengadaan",
+      "Tingkat Maturitas SPIP",
+      "Indikator Kinerja Pelaksanaan Anggaran",
+      "Survei Kepuasan Masyarakat",
+      "Indeks Pelayanan Publik"
+    ];
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function fmt(n) {
+      return Number(n).toLocaleString("id-ID", { maximumFractionDigits: 2 });
+    }
+
+    function pctText(n, d) {
+      return (d ? (n / d * 100) : 0).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+    }
+
+    function targetLabel(ind) {
+      return targetBaik[ind.name] || "Kategori Baik sesuai instrumen penilaian";
+    }
+
+    function updateSourceBadge(meta) {
+      dataSourceInfo = meta;
+      const badge = document.getElementById("dataSourceBadge");
+      const sub = document.getElementById("headerSubtitle");
+      if (!badge) return;
+
+      badge.classList.remove("live", "fallback");
+      if (meta.source === "google_sheets" && meta.isFallback === false) {
+        badge.classList.add("live");
+        const dt = meta.updatedAt ? new Date(meta.updatedAt) : new Date();
+        const t = dt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+        const d = dt.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit" });
+        badge.textContent = `Data Live Google Sheets: ${d} ${t} (${meta.sheetName || "Sheet1"})`;
+        if (sub) sub.textContent = `Profil capaian ${rows.length} instansi pada ${inds.length} indikator evaluasi 2025 · Sumber live: Google Sheets (${meta.sheetName || "Sheet1"})`;
+      } else if (meta.source === "verified_baseline_fallback") {
+        badge.classList.add("fallback");
+        badge.textContent = "Fallback Baseline Terverifikasi (Evaluasi 2025)";
+        if (sub) sub.textContent = `Profil capaian ${rows.length} instansi pada ${inds.length} indikator evaluasi 2025 · Menggunakan baseline terverifikasi (Google Sheets tidak terjangkau)`;
+      } else {
+        badge.classList.add("fallback");
+        badge.textContent = "Mode Offline — Baseline Terverifikasi 2025";
+        if (sub) sub.textContent = `Profil capaian ${rows.length} instansi pada ${inds.length} indikator evaluasi 2025 · Mode offline baseline terverifikasi`;
+      }
+    }
+
+    function applyDataset(payload, meta) {
+      inds = Array.isArray(payload.indicators) ? payload.indicators : [];
+      rows = Array.isArray(payload.rows) ? payload.rows : [];
+
+      // Pastikan aturan SPI Hijau -> good tetap aktif
+      const spiIndex = inds.findIndex(x => x.name === "Survei Penilaian Integritas");
+      if (spiIndex >= 0) {
+        rows.forEach(r => {
+          const x = r[1][spiIndex];
+          if (x && x[1] === "Hijau" && x[2] === null) x[2] = "good";
+        });
+      }
+
+      stats = inds.map((ind, j) => {
+        let good = 0, bad = 0, na = 0, hasValue = 0, goodVals = [];
+        rows.forEach(r => {
+          const x = r[1][j];
+          if (x[0] !== null) hasValue++;
+          if (x[2] === "good") {
+            good++;
+            if (x[0] !== null) goodVals.push(x[0]);
+          } else if (x[2] === "below") {
+            bad++;
+          } else {
+            na++;
+          }
+        });
+        return {
+          ...ind,
+          good,
+          bad,
+          na,
+          hasValue,
+          total: good + bad,
+          lo: goodVals.length ? Math.min(...goodVals) : null,
+          hi: goodVals.length ? Math.max(...goodVals) : null
+        };
+      });
+
+      populationStats = inds.map((ind, j) =>
+        rows.reduce((n, r) => n + (r[1][j][2] === "good" || r[1][j][2] === "below" ? 1 : 0), 0)
+      );
+
+      instStats = rows.map((r, i) => {
+        let good = 0, bad = 0, na = 0;
+        r[1].forEach(x => {
+          if (x[2] === "good") good++;
+          else if (x[2] === "below") bad++;
+          else na++;
+        });
+        const classified = good + bad;
+        return {
+          name: r[0],
+          i,
+          good,
+          bad,
+          na,
+          classified,
+          pct: classified ? (good / classified * 100) : 0,
+          badPct: classified ? (bad / classified * 100) : 0
+        };
+      });
+
+      updateSourceBadge(meta);
+      populateDropdowns();
+      loadRegionOptions();
+      drawKpis();
+      drawIndicators();
+      drawInst();
+      if (activeDetail.index !== null && rows[activeDetail.index]) {
+        renderDetail();
+      }
+    }
+
+    function drawDistributionTable() {
+      const data = stats.slice().sort((a, b) => a.name.localeCompare(b.name, "id"));
+      const pages = Math.max(1, Math.ceil(data.length / distributionPageSize));
+      distributionPage = Math.min(distributionPage, pages);
+      const slice = data.slice((distributionPage - 1) * distributionPageSize, distributionPage * distributionPageSize);
+      document.getElementById("distributionTable").innerHTML = slice.map(x => {
+        const j = inds.findIndex(z => z.name === x.name);
+        const pop = populationStats[j];
+        const classified = x.good + x.bad;
+        if (classified === 0) {
+          return `<tr><td>${esc(x.name)}</td><td>${x.hasValue} nilai</td><td colspan="2"><span class="pill na">Belum terklasifikasi (tanpa kolom kategori)</span></td></tr>`;
+        }
+        return `<tr><td>${esc(x.name)}</td><td>${pop} instansi</td><td><span class="pill good">${x.good} / ${pctText(x.good, classified)}</span></td><td><span class="pill bad">${x.bad} / ${pctText(x.bad, classified)}</span></td></tr>`;
+      }).join("");
+      document.getElementById("distributionPagination").innerHTML = `<span>Halaman ${distributionPage} dari ${pages} · ${data.length} indikator</span><button type="button" ${distributionPage <= 1 ? "disabled" : ""} onclick="changeDistributionPage(-1)">Sebelumnya</button><button type="button" ${distributionPage >= pages ? "disabled" : ""} onclick="changeDistributionPage(1)">Berikutnya</button>`;
+    }
+
+    function changeDistributionPage(delta) {
+      distributionPage += delta;
+      drawDistributionTable();
+    }
+
+    function drawKpis() {
+      const g = stats.reduce((a, x) => a + x.good, 0);
+      const b = stats.reduce((a, x) => a + x.bad, 0);
+      const classified = g + b;
+      const total = populationStats.reduce((a, x) => a + x, 0);
+      const goodPct = classified ? (g / classified * 100) : 0;
+      const belowPct = classified ? (b / classified * 100) : 0;
+
+      document.getElementById("kpis").innerHTML = [
+        ["Cakupan evaluasi", fmt(rows.length), "Instansi dalam dataset"],
+        ["Indikator penilaian", fmt(inds.length), "Indikator yang tersedia dalam dataset"],
+        ["Tingkat ketercapaian Baik+", goodPct.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%", fmt(g) + " data instansi–indikator"],
+        ["Area yang perlu ditingkatkan", belowPct.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%", fmt(b) + " data instansi–indikator"]
+      ].map((x, i) => `<div class="card"><div class="kpi-label">${x[0]}</div><div class="kpi-value" ${i === 2 ? 'style="color:var(--green-ink)"' : i === 3 ? 'style="color:var(--red-ink)"' : ""}>${x[1]}</div><div class="kpi-note">${x[2]}</div></div>`).join("");
+
+      const info = document.getElementById("coverageInsight");
+      if (info) {
+        info.innerHTML = `<div class="insight-head"><b>Distribusi capaian pada data yang terklasifikasi</b><span>${fmt(classified)} data terklasifikasi dari ${fmt(total)} data berisi nilai/kategori</span></div><div class="distribution-track"><div class="distribution-good" style="width:${goodPct}%"></div><div class="distribution-below" style="width:${belowPct}%"></div></div><div class="distribution-labels"><span class="good-label">Baik atau lebih: ${fmt(g)} / ${goodPct.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span><span class="below-label">Di bawah Baik: ${fmt(b)} / ${belowPct.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span></div><p class="coverage-note">Populasi merupakan jumlah instansi yang masuk dalam penilaian indikator. Data yang dikecualikan atau tidak terklasifikasi tidak masuk dalam denominator.</p>`;
+      }
+      drawDistributionTable();
+    }
+
+    function getIndicatorScopedRows() {
+      const type = document.getElementById("selectIndType").value;
+      const province = document.getElementById("selectIndProvince").value;
+      const regency = document.getElementById("selectIndRegency").value;
+      return rows.filter(r => {
+        if (type !== "all" && r[2] !== type) return false;
+        if (province !== "all" && r[0] !== province) return false;
+        if (regency !== "all" && r[0] !== regency) return false;
+        return true;
+      });
+    }
+
+    function loadRegionOptions() {
+      const provinceSelect = document.getElementById("selectIndProvince");
+      const regencySelect = document.getElementById("selectIndRegency");
+      const provinces = rows.filter(r => r[2] === "Provinsi").map(r => r[0]).sort((a, b) => a.localeCompare(b, "id"));
+      const regencies = rows.filter(r => r[2] === "Kabupaten" || r[2] === "Kota").map(r => r[0]).sort((a, b) => a.localeCompare(b, "id"));
+
+      provinceSelect.innerHTML = '<option value="all">Semua provinsi</option>';
+      provinces.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        provinceSelect.appendChild(option);
+      });
+      provinceSelect.disabled = provinces.length === 0;
+
+      regencySelect.innerHTML = '<option value="all">Semua kabupaten/kota</option>';
+      regencies.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        regencySelect.appendChild(option);
+      });
+      regencySelect.disabled = regencies.length === 0;
+    }
+
+    function syncRegionDropdowns(changed) {
+      const provinceSelect = document.getElementById("selectIndProvince");
+      const regencySelect = document.getElementById("selectIndRegency");
+      if (changed === "province" && provinceSelect.value !== "all") {
+        regencySelect.value = "all";
+      } else if (changed === "regency" && regencySelect.value !== "all") {
+        provinceSelect.value = "all";
+      }
+    }
+
+    function drawIndicators() {
+      const selected = document.getElementById("selectInd").value;
+      const type = document.getElementById("selectIndType").value;
+      const province = document.getElementById("selectIndProvince").value;
+      const regency = document.getElementById("selectIndRegency").value;
+      const scopedRows = getIndicatorScopedRows();
+
+      const scopedStats = inds.map((ind, j) => {
+        let good = 0, bad = 0, na = 0, goodVals = [];
+        scopedRows.forEach(r => {
+          const x = r[1][j];
+          if (x[2] === "good") {
+            good++;
+            if (x[0] !== null) goodVals.push(x[0]);
+          } else if (x[2] === "below") {
+            bad++;
+          } else {
+            na++;
+          }
+        });
+        return {
+          ...ind,
+          good,
+          bad,
+          na,
+          total: good + bad,
+          lo: goodVals.length ? Math.min(...goodVals) : null,
+          hi: goodVals.length ? Math.max(...goodVals) : null
+        };
+      });
+
+      const a = scopedStats.filter(x => selected === "all" || x.name === selected).sort((x, y) => y.bad - x.bad);
+      document.getElementById("indicatorBars").innerHTML = a.map(x => {
+        const t = x.good + x.bad;
+        const gp = t ? (x.good / t * 100) : 0;
+        const bp = t ? (x.bad / t * 100) : 0;
+        return `<div class="barrow"><div class="barlabel" title="${esc(x.name)}">${esc(x.name)}<div class="metric-inline">Populasi: ${x.total} · Baik+: ${x.good} (${pctText(x.good, t)}) · Di bawah: ${x.bad} (${pctText(x.bad, t)})</div></div><div class="track" title="Baik+: ${x.good} (${pctText(x.good, t)}); di bawah Baik: ${x.bad} (${pctText(x.bad, t)})"><div class="goodbar" style="width:${gp}%"></div><div class="badbar" style="width:${bp}%"></div></div><div class="barcount">${x.bad}</div></div>`;
+      }).join("") || "<p class='muted'>Indikator tidak ditemukan.</p>";
+
+      const topLow = scopedStats.slice().sort((x, y) => y.bad - x.bad).slice(0, 10);
+      document.getElementById("topLow").innerHTML = topLow.map((x, i) => {
+        const t = x.good + x.bad;
+        return `<div class="barrow"><div class="barlabel" title="${esc(x.name)}">${i + 1}. ${esc(x.name)}<div class="metric-inline">${x.bad} instansi · ${pctText(x.bad, t)} di bawah Baik</div></div><div class="track"><div class="badbar" style="width:${t ? x.bad / t * 100 : 0}%"></div></div><div class="barcount">${x.bad}</div></div>`;
+      }).join("");
+
+      const goodBody = document.getElementById("goodInstList");
+      const belowBody = document.getElementById("belowInstList");
+      if (selected === "all") {
+        document.getElementById("indicatorDetailTitle").textContent = "Rincian instansi per indikator";
+        document.getElementById("indicatorDetailSub").textContent = "Pilih satu indikator pada dropdown untuk melihat daftar instansi dalam kategori instansi yang dipilih.";
+        document.getElementById("goodInstCount").textContent = "—";
+        document.getElementById("belowInstCount").textContent = "—";
+        goodBody.innerHTML = "<tr><td colspan='4' class='muted'>Pilih indikator.</td></tr>";
+        belowBody.innerHTML = "<tr><td colspan='4' class='muted'>Pilih indikator.</td></tr>";
+      } else {
+        const j = inds.findIndex(x => x.name === selected);
+        const good = [];
+        const below = [];
+        scopedRows.forEach(r => {
+          const x = r[1][j];
+          const item = { name: r[0], value: x[0], category: x[1] };
+          if (x[2] === "good") good.push(item);
+          else if (x[2] === "below") below.push(item);
+        });
+        document.getElementById("indicatorDetailTitle").textContent = "Rincian instansi — " + selected;
+        document.getElementById("indicatorDetailSub").textContent =
+          "Kelompok instansi: " + (type === "all" ? "Semua kategori" : type) +
+          (province !== "all" ? " · Provinsi: " + province : "") +
+          (regency !== "all" ? " · Kab/Kota: " + regency : "") +
+          ". Daftar dirangking berdasarkan nilai indikator.";
+        document.getElementById("goodInstCount").textContent = good.length + " instansi";
+        document.getElementById("belowInstCount").textContent = below.length + " instansi";
+        renderIndicatorList("good", good);
+        renderIndicatorList("below", below);
+      }
+
+      comparisonPage = 1;
+      renderComparison();
+    }
+
+    function renderIndicatorList(group, list) {
+      const body = document.getElementById(group === "good" ? "goodInstList" : "belowInstList");
+      const direction = indicatorListSort[group] || "desc";
+      list.sort((a, b) => {
+        if (a.value === null && b.value === null) return a.name.localeCompare(b.name, "id");
+        if (a.value === null) return 1;
+        if (b.value === null) return -1;
+        const delta = direction === "desc" ? b.value - a.value : a.value - b.value;
+        return delta || a.name.localeCompare(b.name, "id");
+      });
+      body.innerHTML = list.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.name)}</td><td>${x.value === null ? "—" : fmt(x.value)}</td><td>${esc(x.category ?? "—")}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">Tidak ada instansi pada kategori ini.</td></tr>`;
+      const arrow = document.getElementById(group === "good" ? "goodSortArrow" : "belowSortArrow");
+      if (arrow) arrow.textContent = direction === "desc" ? "↓" : "↑";
+    }
+
+    function toggleIndicatorListSort(group) {
+      indicatorListSort[group] = indicatorListSort[group] === "desc" ? "asc" : "desc";
+      const selected = document.getElementById("selectInd").value;
+      if (selected === "all") return;
+      const j = inds.findIndex(x => x.name === selected);
+      const list = [];
+      getIndicatorScopedRows().forEach(r => {
+        const x = r[1][j];
+        if ((group === "good" && x[2] === "good") || (group === "below" && x[2] === "below")) {
+          list.push({ name: r[0], value: x[0], category: x[1] });
+        }
+      });
+      renderIndicatorList(group, list);
+    }
+
+    function drawInst() {
+      const selected = document.getElementById("selectInst").value;
+      const type = document.getElementById("selectInstType").value;
+      const f = document.getElementById("filterStatus").value;
+      const a = instStats.filter(x => (selected === "all" || x.name === selected) && (type === "all" || rows[x.i][2] === type));
+      if (f === "high") a.sort((x, y) => y.good - x.good);
+      else if (f === "low") a.sort((x, y) => y.bad - x.bad);
+      else a.sort((x, y) => x.name.localeCompare(y.name, "id"));
+
+      document.getElementById("instTable").innerHTML = a.map(x => `<tr><td><button class="btn" type="button" onclick="showDetail(${x.i})">${esc(x.name)}</button></td><td>${rows[x.i][3] === null ? "—" : fmt(rows[x.i][3])}</td><td><button class="pill good clickable-pill" type="button" onclick="showDetail(${x.i},'good')" title="Lihat ${x.good} indikator Baik atau lebih">${x.good} / ${fmt(x.pct)}%</button></td><td><button class="pill bad clickable-pill" type="button" onclick="showDetail(${x.i},'below')" title="Lihat ${x.bad} indikator di bawah Baik">${x.bad} / ${fmt(x.badPct)}%</button></td><td><div class="track" style="width:150px"><div class="goodbar" style="width:${x.pct}%"></div><div class="badbar" style="width:${x.badPct}%"></div></div></td></tr>`).join("") || "<tr><td colspan='5' class='muted'>Tidak ada instansi pada kategori ini.</td></tr>";
+    }
+
+    function showDetail(i, status = "all") {
+      activeDetail.index = i;
+      activeDetail.status = status;
+      activeDetail.sort = "desc";
+      renderDetail();
+    }
+
+    function toggleDetailSort() {
+      activeDetail.sort = activeDetail.sort === "desc" ? "asc" : "desc";
+      renderDetail();
+    }
+
+    function renderDetail() {
+      const i = activeDetail.index;
+      if (i === null || !rows[i]) return;
+      const r = rows[i];
+      const status = activeDetail.status;
+      const selected = r[1].map((x, j) => ({ x, j })).filter(o => status === "all" || o.x[2] === status);
+      selected.sort((a, b) => {
+        const av = a.x[0], bv = b.x[0];
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return activeDetail.sort === "desc" ? bv - av : av - bv;
+      });
+      const statusLabel = status === "good" ? "Baik atau lebih" : status === "below" ? "Di bawah Baik" : "seluruh kategori";
+      document.getElementById("detailTitle").textContent = "Detail indikator — " + r[0];
+      document.getElementById("detailSub").textContent = `Menampilkan ${selected.length} indikator dengan status ${statusLabel}. Klik header Nilai untuk mengubah urutan tertinggi–terendah atau sebaliknya.`;
+      const arrow = document.getElementById("detailSortArrow");
+      if (arrow) arrow.textContent = activeDetail.sort === "desc" ? "↓ Tertinggi ke terendah" : "↑ Terendah ke tertinggi";
+      document.getElementById("detailTable").innerHTML = selected.map(({ x, j }) => {
+        const pill = x[2] === "good" ? "good" : x[2] === "below" ? "bad" : "na";
+        const lab = x[2] === "good" ? "Baik atau lebih" : x[2] === "below" ? "Di bawah Baik" : "Belum terklasifikasi";
+        const target = targetLabel(inds[j]);
+        return `<tr><td>${esc(inds[j].name)}</td><td>${x[0] === null ? "—" : fmt(x[0])}</td><td>${esc(x[1] ?? "—")}</td><td><span class="pill ${pill}">${lab}</span></td><td class="range">${esc(target)}</td></tr>`;
+      }).join("") || `<tr><td colspan="5" class="muted">Tidak ada indikator dengan status ${statusLabel}.</td></tr>`;
+    }
+
+    function resetInstFilters() {
+      document.getElementById("selectInstType").value = "all";
+      populateInstanceOptions();
+      document.getElementById("selectInst").value = "all";
+      syncSearchableSelect(document.getElementById("selectInst"));
+      document.getElementById("filterStatus").value = "all";
+      drawInst();
+    }
+
+    function renderComparison() {
+      const scoped = getIndicatorScopedRows();
+      const head = document.getElementById("comparisonHead");
+      const body = document.getElementById("comparisonBody");
+      head.innerHTML = "<tr><th>Instansi</th>" + comparisonNames.map(n => `<th>${esc(n)}</th>`).join("") + "</tr>";
+      const pages = Math.max(1, Math.ceil(scoped.length / comparisonPageSize));
+      comparisonPage = Math.min(comparisonPage, pages);
+      const chunk = scoped.slice((comparisonPage - 1) * comparisonPageSize, comparisonPage * comparisonPageSize);
+      body.innerHTML = chunk.map(r => `<tr><td>${esc(r[0])}</td>${comparisonNames.map(n => {
+        const j = inds.findIndex(x => x.name === n);
+        const v = j >= 0 ? r[1][j] : [null, null, null];
+        return `<td>${v[0] === null ? "—" : fmt(v[0])}<div class="metric-inline">${esc(v[1] ?? "")}</div></td>`;
+      }).join("")}</tr>`).join("") || `<tr><td colspan="${comparisonNames.length + 1}" class="muted">Tidak ada instansi pada filter ini.</td></tr>`;
+      document.getElementById("comparisonPagination").innerHTML = `<span>Halaman ${comparisonPage} dari ${pages} · ${scoped.length} instansi</span><button type="button" ${comparisonPage <= 1 ? "disabled" : ""} onclick="changeComparisonPage(-1)">Sebelumnya</button><button type="button" ${comparisonPage >= pages ? "disabled" : ""} onclick="changeComparisonPage(1)">Berikutnya</button>`;
+    }
+
+    function changeComparisonPage(delta) {
+      comparisonPage += delta;
+      renderComparison();
+    }
+
+    function resetIndFilters() {
+      document.getElementById("selectInd").value = "all";
+      syncSearchableSelect(document.getElementById("selectInd"));
+      document.getElementById("selectIndType").value = "all";
+      document.getElementById("selectIndProvince").value = "all";
+      document.getElementById("selectIndRegency").value = "all";
+      drawIndicators();
+    }
+
+    function switchTab(which) {
+      const inst = which === "inst";
+      document.getElementById("tabInst").classList.toggle("active", inst);
+      document.getElementById("tabInd").classList.toggle("active", !inst);
+      document.getElementById("tabInst").setAttribute("aria-selected", String(inst));
+      document.getElementById("tabInd").setAttribute("aria-selected", String(!inst));
+      document.getElementById("panelInst").classList.toggle("active", inst);
+      document.getElementById("panelInd").classList.toggle("active", !inst);
+    }
+
+    function buildCSVContent() {
+      const lines = [["Nama Instansi", "Kategori Instansi", "Indeks RB", "Jumlah Baik+", "Jumlah di bawah Baik", "Belum terklasifikasi", "Persentase Baik+"].join(",")];
+      instStats.forEach(x => {
+        lines.push([
+          `"${x.name.replace(/"/g, '""')}"`,
+          rows[x.i][2],
+          rows[x.i][3] ?? "",
+          x.good,
+          x.bad,
+          x.na,
+          x.pct.toFixed(2)
+        ].join(","));
+      });
+      return "\ufeff" + lines.join("\n");
+    }
+
+    function downloadCSV() {
+      const csv = buildCSVContent();
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rekap-profil-instansi-indeks-score-2025.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      return csv;
+    }
+
+    const searchableRegistry = new WeakMap();
+
+    function initSearchableSelect(selectEl, placeholder) {
+      if (!selectEl || searchableRegistry.has(selectEl)) return;
+      selectEl.classList.add("searchable-native-select");
+      selectEl.tabIndex = -1;
+
+      const wrap = document.createElement("div");
+      wrap.className = "searchable-select";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "searchable-input";
+      input.placeholder = placeholder;
+      input.autocomplete = "off";
+      input.setAttribute("role", "combobox");
+      input.setAttribute("aria-expanded", "false");
+      input.setAttribute("aria-autocomplete", "list");
+      input.setAttribute("aria-label", selectEl.getAttribute("aria-label") || placeholder);
+
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "searchable-clear";
+      clearBtn.textContent = "×";
+      clearBtn.title = "Tampilkan semua";
+      clearBtn.setAttribute("aria-label", "Hapus pilihan");
+      clearBtn.hidden = true;
+
+      const menu = document.createElement("ul");
+      menu.className = "searchable-menu";
+      menu.setAttribute("role", "listbox");
+      menu.hidden = true;
+
+      wrap.append(input, clearBtn, menu);
+      selectEl.insertAdjacentElement("afterend", wrap);
+
+      let activeIdx = -1;
+      let visibleOptions = [];
+
+      function getOptions() {
+        return [...selectEl.options].map(o => ({ value: o.value, label: o.textContent }));
+      }
+
+      function syncDisplay() {
+        const cur = selectEl.value;
+        const matched = [...selectEl.options].find(o => o.value === cur);
+        input.value = (cur && cur !== "all" && matched) ? matched.textContent : "";
+        clearBtn.hidden = !input.value;
+      }
+
+      function closeMenu() {
+        menu.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        activeIdx = -1;
+      }
+
+      function choose(val) {
+        selectEl.value = val;
+        syncDisplay();
+        closeMenu();
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function renderMenu(query) {
+        const q = (query || "").trim().toLowerCase();
+        const opts = getOptions();
+        visibleOptions = q
+          ? opts.filter(o => o.value === "all" || o.label.toLowerCase().includes(q))
+          : opts;
+        // Jika mengetik kata kunci, sembunyikan "Semua..." bila ada hasil spesifik agar Enter langsung memilih hasil pertama
+        if (q && visibleOptions.some(o => o.value !== "all")) {
+          visibleOptions = visibleOptions.filter(o => o.value !== "all");
+        }
+        activeIdx = visibleOptions.length ? 0 : -1;
+        if (!visibleOptions.length) {
+          menu.innerHTML = '<li class="searchable-empty">Tidak ditemukan.</li>';
+        } else {
+          menu.innerHTML = visibleOptions.map((o, i) => {
+            const cls = [
+              "searchable-option",
+              o.value === selectEl.value ? "selected" : "",
+              i === activeIdx ? "active" : ""
+            ].filter(Boolean).join(" ");
+            return `<li class="${cls}" role="option" data-val="${esc(o.value)}">${esc(o.label)}</li>`;
+          }).join("");
+        }
+        menu.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+      }
+
+      input.addEventListener("focus", () => {
+        input.select();
+        renderMenu("");
+      });
+      input.addEventListener("click", () => {
+        if (menu.hidden) renderMenu("");
+      });
+      input.addEventListener("input", () => {
+        clearBtn.hidden = !input.value;
+        renderMenu(input.value);
+        if (!input.value.trim() && selectEl.value !== "all") {
+          selectEl.value = "all";
+          selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+      input.addEventListener("keydown", (e) => {
+        if (menu.hidden && (e.key === "ArrowDown" || e.key === "Enter")) {
+          renderMenu(input.value);
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (visibleOptions.length) {
+            activeIdx = (activeIdx + 1) % visibleOptions.length;
+            updateActive();
+          }
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (visibleOptions.length) {
+            activeIdx = (activeIdx - 1 + visibleOptions.length) % visibleOptions.length;
+            updateActive();
+          }
+        } else if (e.key === "Enter") {
+          if (!menu.hidden && activeIdx >= 0 && visibleOptions[activeIdx]) {
+            e.preventDefault();
+            choose(visibleOptions[activeIdx].value);
+          }
+        } else if (e.key === "Escape") {
+          syncDisplay();
+          closeMenu();
+        }
+      });
+
+      function updateActive() {
+        const items = menu.querySelectorAll(".searchable-option");
+        items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+        if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: "nearest" });
+      }
+
+      menu.addEventListener("mousedown", (e) => {
+        const li = e.target.closest(".searchable-option");
+        if (!li) return;
+        e.preventDefault();
+        choose(li.dataset.val);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        choose("all");
+        input.focus();
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          syncDisplay();
+          closeMenu();
+        }, 120);
+      });
+
+      searchableRegistry.set(selectEl, { syncDisplay, input });
+      syncDisplay();
+    }
+
+    function syncSearchableSelect(selectEl) {
+      const entry = searchableRegistry.get(selectEl);
+      if (entry) entry.syncDisplay();
+    }
+
+    function populateInstanceOptions() {
+      const si = document.getElementById("selectInst");
+      const type = document.getElementById("selectInstType").value;
+      const previous = si.value;
+      const filtered = instStats
+        .filter(x => type === "all" || rows[x.i][2] === type)
+        .map(x => x.name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "id"));
+      si.innerHTML = '<option value="all">Semua instansi dalam kategori</option>';
+      filtered.forEach(name => {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        si.appendChild(o);
+      });
+      si.value = filtered.includes(previous) ? previous : "all";
+      syncSearchableSelect(si);
+    }
+
+    function populateDropdowns() {
+      const sd = document.getElementById("selectInd");
+      const prevInd = sd.value;
+      populateInstanceOptions();
+      sd.innerHTML = '<option value="all">Semua indikator</option>';
+      [...new Set(inds.map(x => x.name).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "id"))
+        .forEach(name => {
+          const o = document.createElement("option");
+          o.value = name;
+          o.textContent = name;
+          sd.appendChild(o);
+        });
+      sd.value = inds.some(x => x.name === prevInd) ? prevInd : "all";
+      syncSearchableSelect(sd);
+    }
+
+    async function syncFromAPI() {
+      if (window.location.protocol === "file:") return;
+      const endpoints = ["/api/indeks-score", "/.netlify/functions/get-indeks-score"];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, { cache: "no-cache" });
+          if (!res.ok) continue;
+          const payload = await res.json();
+          if (payload && payload.success && Array.isArray(payload.rows) && payload.rows.length > 0) {
+            applyDataset(payload, {
+              source: payload.source,
+              isFallback: Boolean(payload.isFallback),
+              sheetName: payload.sheetName,
+              updatedAt: payload.updatedAt
+            });
+            return;
+          }
+        } catch (err) {
+          // Lanjut ke endpoint fallback berikutnya
+        }
+      }
+    }
+
+    initSearchableSelect(document.getElementById("selectInst"), "Ketik untuk mencari instansi...");
+    initSearchableSelect(document.getElementById("selectInd"), "Ketik untuk mencari indikator...");
+
+    document.getElementById("selectInst").addEventListener("change", drawInst);
+    document.getElementById("selectInstType").addEventListener("change", () => { populateInstanceOptions(); drawInst(); });
+    document.getElementById("filterStatus").addEventListener("change", drawInst);
+    document.getElementById("selectInd").addEventListener("change", drawIndicators);
+    document.getElementById("selectIndType").addEventListener("change", drawIndicators);
+    document.getElementById("selectIndProvince").addEventListener("change", () => { syncRegionDropdowns("province"); drawIndicators(); });
+    document.getElementById("selectIndRegency").addEventListener("change", () => { syncRegionDropdowns("regency"); drawIndicators(); });
+
+    // Inisialisasi segera dari baseline terverifikasi, lalu sinkronkan live Google Sheets via API
+    if (window.RB_INDEKS_SCORE_2025_BASELINE) {
+      applyDataset(window.RB_INDEKS_SCORE_2025_BASELINE, {
+        source: "offline_baseline",
+        isFallback: true,
+        sheetName: window.RB_INDEKS_SCORE_2025_BASELINE.sheetName,
+        updatedAt: window.RB_INDEKS_SCORE_2025_BASELINE.generatedAt
+      });
+    }
+    syncFromAPI();
+
+    window.__indeksScore = {
+      getState: () => ({
+        totalInstansi: rows.length,
+        totalIndicators: inds.length,
+        source: dataSourceInfo,
+        statsCount: stats.length
+      }),
+      buildCSVContent
+    };
+  </script>
+</body>
+</html>

@@ -24,13 +24,15 @@ async function runTests() {
   assert.strictEqual(p3.totalRelations, 72, "S3 total harus 72");
   console.log("✔ Test 1 Berhasil: Sasaran 3 Netlify Function mengembalikan tepat 72 relasi");
 
-  // Test 2: Sasaran 4 Handler
+  // Test 2: Sasaran 4 Handler (Final: sasaran 4 -dev)
   const res4 = await s4Fn.handler({ httpMethod: "GET" }, {});
   assert.strictEqual(res4.statusCode, 200, "S4 handler harus return 200");
   const p4 = JSON.parse(res4.body);
   assert.strictEqual(p4.success, true, "S4 success harus true");
-  assert.strictEqual(p4.totalRelations, 168, "S4 total harus 168");
-  console.log("✔ Test 2 Berhasil: Sasaran 4 Netlify Function mengembalikan tepat 168 relasi");
+  assert.strictEqual(p4.sheetName, "sasaran 4 -dev", "S4 harus membaca sheet sasaran 4 -dev");
+  assert.ok(p4.totalRelations >= 494, `S4 total harus >= 494 (dapat ${p4.totalRelations})`);
+  assert.ok(p4.relations[0].sourceIndex && p4.relations[0].destIndex, "S4 harus menggunakan skema final antarindeks");
+  console.log(`✔ Test 2 Berhasil: Sasaran 4 Netlify Function (${p4.source}) mengembalikan ${p4.totalRelations} relasi final`);
 
   // Test 3: Sasaran 5 Handler
   const res5 = await s5Fn.handler({ httpMethod: "GET" }, {});
