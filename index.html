@@ -130,7 +130,9 @@
             <select id="selectInternalSasaran" class="select-input">
               <option value="5" selected>Sasaran 5 — Pelayanan Publik</option>
               <option value="4">Sasaran 4 — Kapabilitas Kelembagaan</option>
-              <option value="3">Sasaran 3 — Integritas &amp; Inovasi (Data Perlu Diperjelas)</option>
+              <option value="3">Sasaran 3 — Integritas &amp; Inovasi</option>
+              <option value="2">Sasaran 2 — Sistem Merit</option>
+              <option value="1">Sasaran 1 — Transformasi Digital</option>
             </select>
           </div>
 
@@ -147,28 +149,28 @@
             </select>
           </div>
 
-          <!-- Dropdown Sasaran Sumber (Menu Eksternal: Sasaran 1 aktif, Sasaran 2-5 abu-abu/disabled) -->
+          <!-- Dropdown Sasaran Sumber (Menu Eksternal) -->
           <div class="filter-group hidden" id="groupExtSourceSasaranSelect">
             <label for="selectExtSourceSasaran" id="labelExtSourceSasaran">
               <span>Sasaran Sumber</span>
             </label>
             <select id="selectExtSourceSasaran" class="select-input">
               <option value="1" selected>Sasaran 1 (Transformasi Digital)</option>
-              <option value="2" disabled class="option-disabled">Sasaran 2 (Sistem Merit)</option>
-              <option value="3" disabled class="option-disabled">Sasaran 3 (Integritas &amp; Inovasi)</option>
-              <option value="4" disabled class="option-disabled">Sasaran 4 (Kapabilitas Kelembagaan)</option>
-              <option value="5" disabled class="option-disabled">Sasaran 5 (Pelayanan Publik)</option>
+              <option value="2">Sasaran 2 (Sistem Merit)</option>
+              <option value="3">Sasaran 3 (Integritas &amp; Inovasi)</option>
+              <option value="4">Sasaran 4 (Kapabilitas Kelembagaan)</option>
+              <option value="5">Sasaran 5 (Pelayanan Publik)</option>
             </select>
           </div>
 
-          <!-- Dropdown Sasaran Tujuan (Menu Eksternal: Sasaran 2 s.d. 5 aktif, Sasaran 1 abu-abu/disabled) -->
+          <!-- Dropdown Sasaran Tujuan (Menu Eksternal) -->
           <div class="filter-group hidden" id="groupExtDestSasaranSelect">
             <label for="selectExtDestSasaran" id="labelExtDestSasaran">
               <span>Sasaran Tujuan</span>
             </label>
             <select id="selectExtDestSasaran" class="select-input">
               <option value="ALL" selected>Semua Sasaran Tujuan</option>
-              <option value="1" disabled class="option-disabled">Sasaran 1 (Transformasi Digital)</option>
+              <option value="1">Sasaran 1 (Transformasi Digital)</option>
               <option value="2">Sasaran 2 (Sistem Merit)</option>
               <option value="3">Sasaran 3 (Integritas &amp; Inovasi)</option>
               <option value="4">Sasaran 4 (Kapabilitas Kelembagaan)</option>
@@ -619,19 +621,15 @@
   </div>
 
   <!-- Memuat Script Dataset Terlebih Dahulu (Kompatibel Protokol file://) -->
-  <script src="data/data-sasaran.js?v=20261109_v8"></script>
-  <script src="data/data-relasi-internal.js?v=20261109_v8"></script>
-  <script src="data/data-relasi-eksternal.js?v=20261109_v8"></script>
-  <script src="data/data-relasi.js?v=20261109_v8"></script>
-  <script src="data/rb-relasi-eksternal-terbaru.js?v=20261109_v8"></script>
-  <script src="data/jenis-keterkaitan.js?v=20261109_v8"></script>
-  <script src="data/substansi-indikator.js?v=20261111_v494_def"></script>
-  <script src="data/sasaran4-dev-baseline.js?v=20261111_v494"></script>
+  <script src="data/data-sasaran.js?v=20261123_sheetjs"></script>
+  <script src="data/jenis-keterkaitan.js?v=20261123_sheetjs"></script>
+  <script src="data/substansi-indikator.js?v=20261123_sheetjs"></script>
+  <script src="data/sasaran-relations.js?v=20261123_sheetjs"></script>
   <!-- Pustaka Ekspor PDF Mandiri (100% Offline & Kompatibel file://) -->
   <script src="vendor/html2pdf.bundle.min.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/jspdf.plugin.autotable.min.js"></script>
-  <script src="assets/js/app.js?v=20261119_s4final"></script>
+  <script src="assets/js/app.js?v=20261123_sheetjs"></script>
   <script>
     (() => {
       const layout = document.querySelector(".app-layout");

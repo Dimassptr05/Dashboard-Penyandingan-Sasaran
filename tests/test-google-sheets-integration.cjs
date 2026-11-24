@@ -1,72 +1,113 @@
-/**
- * ============================================================================
- * TEST INTEGRASI GOOGLE SHEETS & NETLIFY FUNCTIONS - ALL SASARAN (1 s.d. 5)
- * ============================================================================
- */
-
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
-console.log("=== MEMULAI TEST INTEGRASI GOOGLE SHEETS ALL SASARAN (1 s.d. 5) ===");
+const fn = require("../netlify/functions/get-sasaran.js");
+const baseline = require("../data/sasaran-relations.js");
 
-const s3Fn = require("../netlify/functions/get-sasaran3.js");
-const s4Fn = require("../netlify/functions/get-sasaran4.js");
-const s5Fn = require("../netlify/functions/get-sasaran5.js");
-const extFn = require("../netlify/functions/get-external.js");
+const HEADER = [
+  "No",
+  "Kelompok Sumber (Level 1)",
+  "Indeks Sumber (Level 2)",
+  "ID Indikator Sumber",
+  "Nama Indikator Sumber",
+  "Kelompok Pembanding",
+  "Indeks Pembanding",
+  "ID Indikator Pembanding",
+  "Nama Indikator Pembanding",
+  "Jenis Keterkaitan",
+  "Risiko Redundansi",
+  "Alasan / Justifikasi Substantif",
+  "Rekomendasi Tindak Lanjut"
+];
 
-async function runTests() {
-  // Test 1: Sasaran 3 Handler
-  const res3 = await s3Fn.handler({ httpMethod: "GET" }, {});
-  assert.strictEqual(res3.statusCode, 200, "S3 handler harus return 200");
-  const p3 = JSON.parse(res3.body);
-  assert.strictEqual(p3.success, true, "S3 success harus true");
-  assert.strictEqual(p3.totalRelations, 72, "S3 total harus 72");
-  console.log("✔ Test 1 Berhasil: Sasaran 3 Netlify Function mengembalikan tepat 72 relasi");
-
-  // Test 2: Sasaran 4 Handler (Final: sasaran 4 -dev)
-  const res4 = await s4Fn.handler({ httpMethod: "GET" }, {});
-  assert.strictEqual(res4.statusCode, 200, "S4 handler harus return 200");
-  const p4 = JSON.parse(res4.body);
-  assert.strictEqual(p4.success, true, "S4 success harus true");
-  assert.strictEqual(p4.sheetName, "sasaran 4 -dev", "S4 harus membaca sheet sasaran 4 -dev");
-  assert.ok(p4.totalRelations >= 494, `S4 total harus >= 494 (dapat ${p4.totalRelations})`);
-  assert.ok(p4.relations[0].sourceIndex && p4.relations[0].destIndex, "S4 harus menggunakan skema final antarindeks");
-  console.log(`✔ Test 2 Berhasil: Sasaran 4 Netlify Function (${p4.source}) mengembalikan ${p4.totalRelations} relasi final`);
-
-  // Test 3: Sasaran 5 Handler
-  const res5 = await s5Fn.handler({ httpMethod: "GET" }, {});
-  assert.strictEqual(res5.statusCode, 200, "S5 handler harus return 200");
-  const p5 = JSON.parse(res5.body);
-  assert.strictEqual(p5.success, true, "S5 success harus true");
-  assert.ok(p5.totalRelations >= 100, "S5 total harus terisi relasi lengkap");
-  console.log(`✔ Test 3 Berhasil: Sasaran 5 Netlify Function mengembalikan ${p5.totalRelations} relasi`);
-
-  // Test 4: External / Sasaran 1 Handler
-  const resExt = await extFn.handler({ httpMethod: "GET" }, {});
-  assert.strictEqual(resExt.statusCode, 200, "Ext handler harus return 200");
-  const pExt = JSON.parse(resExt.body);
-  assert.strictEqual(pExt.success, true, "Ext success harus true");
-  assert.strictEqual(pExt.totalRelations, 1631, "Ext total harus 1631");
-  console.log("✔ Test 4 Berhasil: Relasi Eksternal Netlify Function mengembalikan tepat 1.631 relasi");
-
-  // Test 5: Verifikasi integritas data baseline offline
-  global.window = global;
-  eval(fs.readFileSync(path.resolve(__dirname, "../data/data-sasaran.js"), "utf8"));
-  eval(fs.readFileSync(path.resolve(__dirname, "../data/data-relasi-internal.js"), "utf8"));
-  eval(fs.readFileSync(path.resolve(__dirname, "../data/rb-relasi-eksternal-terbaru.js"), "utf8"));
-
-  assert.strictEqual(window.RB_RELASI_INTERNAL.sasaran3.relasi.length, 72, "Sasaran 3 baseline harus 72");
-  assert.strictEqual(window.RB_RELASI_INTERNAL.sasaran5.length, 1947, "Sasaran 5 baseline harus 1947");
-  assert.strictEqual(window.RB_EXTERNAL_LATEST.relations.length, 1631, "External baseline harus 1631");
-  console.log("✔ Test 5 Berhasil: Seluruh dataset baseline lokal 100% utuh dan sinkron");
-
-  console.log("\n============================================================");
-  console.log("   SELURUH PENGUJIAN INTEGRASI GOOGLE SHEETS BERHASIL (PASS)  ");
-  console.log("============================================================");
+function rowAt(start, values) {
+  const row = Array(start).fill("");
+  values.forEach((value, index) => {
+    row[start + index] = value;
+  });
+  return row;
 }
 
-runTests().catch(err => {
-  console.error("❌ TEST GAGAL:", err);
-  process.exit(1);
+function relationValues(no, sourceIndex, destIndex) {
+  return [
+    no,
+    `Kelompok ${no}`,
+    sourceIndex,
+    `SS4-${sourceIndex}.1.1`,
+    `Indikator ${no}`,
+    `Pembanding ${no}`,
+    destIndex,
+    `SS1-${destIndex}.1.1`,
+    `Pembanding Indikator ${no}`,
+    "Mendukung",
+    "Rendah",
+    "Alasan uji",
+    "Rekomendasi uji"
+  ];
+}
+
+console.log("=== MEMULAI TEST FUNCTION SASARAN TERINTEGRASI ===");
+
+assert.deepStrictEqual(fn.SASARAN_SHEETS, {
+  1: { sheetName: "sasaran1.js", sheetGid: "1769541411" },
+  2: { sheetName: "sasaran2.js", sheetGid: "973478513" },
+  3: { sheetName: "sasaran3.js", sheetGid: "1009479719" },
+  4: { sheetName: "sasaran4.js", sheetGid: "1944797946" },
+  5: { sheetName: "sasaran5.js", sheetGid: "26975224" }
 });
+console.log("OK mapping 5 tab sasaran.js");
+
+const csv = fn.parseCSV('a,"b,c",d\n1,"x""y",3');
+assert.deepStrictEqual(csv, [["a", "b,c", "d"], ["1", 'x"y', "3"]]);
+console.log("OK parseCSV");
+
+const firstRow = rowAt(67, HEADER);
+firstRow[81] = "Eksternal";
+const secondRow = rowAt(67, relationValues(1, "KK", "PEMDI"));
+HEADER.forEach((value, index) => {
+  secondRow[81 + index] = value;
+});
+const fixtureRows = [
+  firstRow,
+  secondRow,
+  rowAt(81, relationValues(1, "KK", "PEMDI"))
+];
+const parsed = fn.parseSheetRows(fixtureRows, 4);
+assert.strictEqual(parsed.internal.length, 1);
+assert.strictEqual(parsed.external.length, 1);
+assert.strictEqual(parsed.internal[0].sourceIndex, "KK");
+assert.strictEqual(parsed.external[0].destIndex, "PEMDI");
+assert.strictEqual(parsed.external[0].sasaran, 4);
+console.log("OK parser blok internal baris 0 dan eksternal baris 1");
+
+const expectedCounts = {
+  1: [0, 15],
+  2: [0, 15],
+  3: [12, 28],
+  4: [494, 64],
+  5: [44, 48]
+};
+for (const [id, [internalCount, externalCount]] of Object.entries(expectedCounts)) {
+  const entry = baseline[id];
+  assert.ok(entry, `baseline sasaran ${id} harus ada`);
+  assert.strictEqual(entry.internal.length, internalCount, `internal sasaran ${id}`);
+  assert.strictEqual(entry.external.length, externalCount, `external sasaran ${id}`);
+  for (const relation of [...entry.internal, ...entry.external]) {
+    for (const field of ["sourceSasaran", "targetSasaran", "sourceId", "destId", "sourceIndex", "destIndex", "sourceKelompok", "destKelompok"]) {
+      assert.ok(relation[field] !== undefined, `relasi ${relation.id} harus punya ${field}`);
+    }
+  }
+}
+console.log("OK baseline terpadu 1 s.d. 5");
+
+const root = path.resolve(__dirname, "..");
+const appSource = fs.readFileSync(path.join(root, "assets/js/app.js"), "utf8");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+new Function(appSource);
+assert.ok(!html.includes("option-disabled"), "dropdown sumber eksternal tidak boleh punya opsi disabled");
+assert.ok(html.includes('data/sasaran-relations.js'), "index.html harus memuat baseline terpadu");
+assert.ok(!html.includes("data/data-relasi"), "index.html tidak boleh memuat data lama");
+console.log("OK sintaks app.js dan aset index.html");
+
+console.log("SELURUH PENGUJIAN FUNCTION SASARAN BERHASIL (PASS)");

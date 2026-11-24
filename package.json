@@ -5,8 +5,9 @@
   "scripts": {
     "start": "node scripts/dev-server.js",
     "dev": "node scripts/dev-server.js",
-    "test": "node tests/test-comparison-s4.cjs",
-    "test:catalog": "node tests/test-sasaran4-catalog.cjs"
+    "test": "node tests/test-google-sheets-integration.cjs",
+    "test:sheets": "node tests/test-google-sheets-integration.cjs",
+    "test:browser": "node tests/test-comparison-s4.cjs"
   },
   "keywords": [
     "reformasi-birokrasi",

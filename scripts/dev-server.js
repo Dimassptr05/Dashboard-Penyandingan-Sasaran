@@ -48,15 +48,9 @@ const MIME_TYPES = {
 };
 
 // 3. Import Netlify Function handlers
-let sasaran3Handler = null;
-let sasaran4Handler = null;
-let sasaran5Handler = null;
-let externalHandler = null;
+let sasaranHandler = null;
 let indeksScoreHandler = null;
-try { sasaran3Handler = require("../netlify/functions/get-sasaran3.js").handler; } catch (e) {}
-try { sasaran4Handler = require("../netlify/functions/get-sasaran4.js").handler; } catch (e) {}
-try { sasaran5Handler = require("../netlify/functions/get-sasaran5.js").handler; } catch (e) {}
-try { externalHandler = require("../netlify/functions/get-external.js").handler; } catch (e) {}
+try { sasaranHandler = require("../netlify/functions/get-sasaran.js").handler; } catch (e) {}
 try { indeksScoreHandler = require("../netlify/functions/get-indeks-score.js").handler; } catch (e) {}
 
 // 4. Server HTTP Utama
@@ -66,19 +60,8 @@ const server = http.createServer(async (req, res) => {
 
   // Endpoint API Netlify Function Emulation
   let apiHandler = null;
-  if (pathname === "/api/sasaran3" || pathname === "/.netlify/functions/get-sasaran3") {
-    apiHandler = sasaran3Handler;
-  } else if (
-    pathname === "/api/sasaran4" ||
-    pathname === "/.netlify/functions/get-sasaran4" ||
-    pathname === "/api/sasaran4-dev" ||
-    pathname === "/.netlify/functions/get-sasaran4-dev"
-  ) {
-    apiHandler = sasaran4Handler;
-  } else if (pathname === "/api/sasaran5" || pathname === "/.netlify/functions/get-sasaran5") {
-    apiHandler = sasaran5Handler;
-  } else if (pathname === "/api/sasaran1" || pathname === "/api/external" || pathname === "/.netlify/functions/get-external") {
-    apiHandler = externalHandler;
+  if (/^\/api\/sasaran[1-5]$/.test(pathname) || pathname === "/api/external" || pathname === "/.netlify/functions/get-sasaran") {
+    apiHandler = sasaranHandler;
   } else if (pathname === "/api/indeks-score" || pathname === "/.netlify/functions/get-indeks-score") {
     apiHandler = indeksScoreHandler;
   }
@@ -145,8 +128,9 @@ server.listen(PORT, () => {
   console.log("   PORTAL RELASI RB - LOCAL DEVELOPMENT SERVER");
   console.log("============================================================");
   console.log(` URL Dashboard : http://localhost:${PORT}`);
-  console.log(` API Sasaran 4 : http://localhost:${PORT}/api/sasaran4`);
-  console.log(` Netlify Func  : http://localhost:${PORT}/.netlify/functions/get-sasaran4`);
+  console.log(` API Sasaran   : http://localhost:${PORT}/api/sasaran1 ... /api/sasaran5`);
+  console.log(` API Eksternal : http://localhost:${PORT}/api/external?sasaran=1&scope=external`);
+  console.log(` Netlify Func  : http://localhost:${PORT}/.netlify/functions/get-sasaran`);
   console.log(" Tekan Ctrl+C untuk menghentikan server.");
   console.log("============================================================");
 });

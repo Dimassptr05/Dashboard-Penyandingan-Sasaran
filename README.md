@@ -2,7 +2,7 @@
 
 Aplikasi web visualisasi dan analisis matriks relasi antar-sasaran strategis **Reformasi Birokrasi (RB)** — Kementerian Pendayagunaan Aparatur Negara dan Reformasi Birokrasi (PANRB).
 
-Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka secara offline. Saat dijalankan melalui Netlify atau server pengembangan, data Sasaran 4 disinkronkan dari Google Sheets, termasuk relasi dan katalog definisi operasional tujuh indeks pembanding. File workbook lokal hanya menjadi acuan struktur; bukan sumber data runtime.
+Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka secara offline. Saat dijalankan melalui Netlify atau server pengembangan, data relasi Sasaran 1 s.d. 5 disinkronkan dari tab `sasaran1.js` s.d. `sasaran5.js`. File workbook lokal hanya menjadi acuan struktur; bukan sumber data runtime.
 
 ---
 
@@ -14,8 +14,8 @@ Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka se
    - **Tahap 3: Daftar Rincian Hubungan Analitis** — Tabel komprehensif memuat kode, substansi indikator, jenis keterkaitan, dan justifikasi hubungan.
 
 2. **Ruang Lingkup Relasi:**
-   - **Relasi Internal:** Memetakan keterkaitan antar-indeks dalam satu sasaran (Sasaran 3 — Integritas & Inovasi, Sasaran 4 — Kapabilitas Kelembagaan, Sasaran 5 — Pelayanan Publik).
-   - **Relasi Eksternal:** Memetakan hubungan indikator dari Sasaran 1 (Transformasi Digital) ke Sasaran 2, 3, 4, dan 5.
+   - **Relasi Internal:** Memetakan keterkaitan antar-indeks dalam satu sasaran (Sasaran 1 s.d. 5).
+   - **Relasi Eksternal:** Memetakan hubungan indikator antar-sasaran dari kelima tab `sasaran.js`, dengan sumber dan tujuan yang dapat dipilih.
 
 3. **Interaktivitas & Filter Cerdas:**
    - Pilihan sasaran, indeks sumber, dan indeks pembanding.
@@ -40,14 +40,16 @@ Aplikasi menyediakan dataset baseline lokal agar antarmuka tetap dapat dibuka se
 ├── docs/
 │   └── PERBANDINGAN-SASARAN4.md        # Metode, sumber, dan batasan data perbandingan
 ├── scripts/
-│   └── build-comparison-s4.py          # Membentuk dataset perbandingan dari workbook
-├── tests/                              # Pengujian browser untuk fitur Sasaran 4
+│   ├── build-comparison-s4.py          # Membentuk dataset perbandingan dari workbook
+│   ├── build-sasaran-baseline.js       # Membangun baseline relasi dari 5 tab sheet
+│   └── dev-server.js                   # Server lokal + emulasi Netlify Functions
+├── tests/                              # Pengujian function, parser, dan modul perbandingan
 ├── vendor/                             # Pustaka pihak ketiga untuk ekspor PDF
 └── README.md
 ```
 
-Dataset utama mencakup 783 indikator dan relasi internal/eksternal. Utilitas untuk
-membangun dataset perbandingan tetap berada di `scripts/`; pengujiannya di `tests/`.
+Dataset utama mencakup 783 indikator, 550 relasi internal, dan 170 relasi eksternal.
+Utilitas untuk membangun dataset perbandingan tetap berada di `scripts/`; pengujiannya di `tests/`.
 
 ---
 
@@ -59,15 +61,15 @@ Aplikasi dapat dijalankan dengan mudah melalui dua cara:
 Buka `index.html` langsung melalui protokol `file:///` untuk melihat dataset baseline. Sinkronisasi Google Sheets memerlukan HTTP server.
 
 ### 2. Mode Online dan Pengembangan
-Deploy ke Netlify untuk menggunakan Netlify Functions dan sinkronisasi Google Sheets. Untuk pengembangan lokal, jalankan `npm run dev` lalu buka URL yang ditampilkan server. Sasaran 4 membaca relasi final dari sheet `sasaran 4 -dev` (GID `1144784169`).
+Deploy ke Netlify untuk menggunakan Netlify Functions dan sinkronisasi Google Sheets. Untuk pengembangan lokal, jalankan `npm run dev` lalu buka URL yang ditampilkan server. Endpoint `/api/sasaran1` s.d. `/api/sasaran5` dan `/api/external` dilayani oleh `get-sasaran.js` dengan tab `sasaranN.js`.
 
 ### Pengujian
 
-Pengujian browser memerlukan Playwright dan Chrome lokal. Jalankan dengan `NODE_PATH`
-mengarah ke instalasi Playwright:
-
 ```powershell
-node tests/test-comparison-s4.cjs
+npm test
 node tests/test-internal-s4-analysis.cjs
-npm run test:catalog
+node scripts/build-sasaran-baseline.js
 ```
+
+Pengujian browser modul perbandingan memerlukan Playwright dan Chrome lokal dengan
+`NODE_PATH` yang sesuai; jalankan dengan `npm run test:browser`.

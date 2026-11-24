@@ -13,9 +13,42 @@
 
   // 1. Data Sumber
   const sasaranData = window.RB_SASARAN_DATA || { sasaran: [], instrumen: [], indikator: [], kelompok_s4: [] };
-  const relasiInternal = window.RB_RELASI_INTERNAL || { sasaran3: { relasi: [], placeholders: [] }, sasaran4: [], sasaran5: [] };
-  const revisiData = window.RB_DATA || null;
-  const extLatest = window.RB_EXTERNAL_LATEST || null;
+  const sasaranRelations = window.RB_SASARAN_RELATIONS || {
+    1: { internal: [], external: [] },
+    2: { internal: [], external: [] },
+    3: { internal: [], external: [] },
+    4: { internal: [], external: [] },
+    5: { internal: [], external: [] }
+  };
+
+  function getSasaranRelations(id, scope) {
+    const entry = sasaranRelations[Number(id)];
+    if (!entry) return [];
+    if (scope === "all") return [...(entry.internal || []), ...(entry.external || [])];
+    return entry[scope] || [];
+  }
+
+  function getS3InternalLegacy() {
+    return getSasaranRelations(3, "internal").map(r => ({
+      id: r.id,
+      sasaran_id: 3,
+      asal_instrumen: r.sourceIndex,
+      tujuan_instrumen: r.destIndex,
+      asal_kode: r.sourceId,
+      asal_nama: r.sourceName,
+      asal_aspek: r.sourceKelompok,
+      asal_domain: r.sourceKelompok,
+      tujuan_kode: r.destId,
+      tujuan_nama: r.destName,
+      tujuan_aspek: r.destKelompok,
+      tujuan_domain: r.destKelompok,
+      jenis: r.jenisKeterkaitan || "Mendukung",
+      tingkat: "KUAT",
+      alasan: r.alasanSubstantif,
+      sumber: "Google Sheets (sasaran3.js)",
+      rekomendasi: r.rekomendasi
+    }));
+  }
 
   // Utility Pembersihan Nomor & Kode Teknis untuk Tampilan UI
   function cleanLabel(text) {
@@ -297,9 +330,31 @@
     SM: "Sistem Merit",
     IIIP: "Instrumen Pengumpulan Data Survei Indeks Inovasi Instansi Pemerintah (IIIP)",
     DIIIP: "Desain Indeks Inovasi Instansi Pemerintah (IIIP)",
-    SPI: "Survei Penilaian Integritas (Historis Nonaktif)"
+    SPI: "Survei Penilaian Integritas (SPI)"
   };
   const instName = code => instLabels[code] || code;
+
+  const S3_DESIGN_INST = "DIIIP";
+  const S3_SURVEY_INST = "SPI";
+  function getS3Indices() {
+    const indices = new Set();
+    for (const r of getSasaranRelations(3, "internal")) {
+      if (r.sourceIndex) indices.add(r.sourceIndex);
+      if (r.destIndex) indices.add(r.destIndex);
+    }
+    return indices.size
+      ? [...indices].sort((a, b) => (a === S3_DESIGN_INST ? -1 : b === S3_DESIGN_INST ? 1 : a.localeCompare(b, "id")))
+      : [S3_DESIGN_INST, S3_SURVEY_INST];
+  }
+  function getS3DefaultIndices() {
+    const indices = getS3Indices();
+    const src = indices[0] || S3_DESIGN_INST;
+    return { src, dst: indices.find(i => i !== src) || S3_SURVEY_INST };
+  }
+  function getDefaultInternalSource(id) {
+    const sId = Number(id);
+    return sId === 5 ? "IPP" : sId === 3 ? getS3DefaultIndices().src : "IIIP";
+  }
 
   // Normalisasi Kode Singkat Instrumen
   function getInstrumentShortCode(codeOrGroup, instNameParam) {
@@ -310,8 +365,12 @@
     if (codeOrGroup.startsWith("SS3-SPI")) return "SPI";
     if (codeOrGroup.startsWith("SS4-KK")) return "KK";
     if (codeOrGroup.startsWith("SS4-IPPN")) return "IPPN";
+    if (codeOrGroup.startsWith("SS4-CKKP")) return "CKKP";
+    if (codeOrGroup.startsWith("SS4-SPIP")) return "SPIP";
     if (codeOrGroup.startsWith("SS4-SAKIP")) return "SAKIP";
     if (codeOrGroup.startsWith("SS4-ELPPD")) return "ELPPD";
+    if (codeOrGroup.startsWith("SS4-IKPA")) return "IKPA";
+    if (codeOrGroup.startsWith("SS4-IPA")) return "IPA";
     if (codeOrGroup.startsWith("SS5-IPP")) return "IPP";
     if (codeOrGroup.startsWith("SS5-OP")) return "OP";
     if (codeOrGroup.startsWith("SS5-IKK")) return "IKK";
@@ -334,25 +393,24 @@
     return null;
   }
 
-  // Katalog Indikator Terbaru untuk Lookup Penjelasan / Deskripsi Resmi
   const extCatalogMap = new Map();
-  if (extLatest && extLatest.catalog) {
-    extLatest.catalog.forEach(item => extCatalogMap.set(item.code, item));
-  }
+  (sasaranData.indikators || []).forEach(item => {
+    extCatalogMap.set(item.code, Object.assign({}, item, {
+      component_key: String(item.code || "").replace(/\.[^.]+$/, ""),
+      description: item.label || ""
+    }));
+  });
 
-  // Helper untuk Mendapatkan Nama / Deskripsi Kelompok Kode Teknis (Tanpa Kode Teknis)
   function getComponentGroupName(groupKey) {
     if (!groupKey) return "";
     const sub = getSubstansi(groupKey);
     if (sub && sub.indikator) {
       return sub.indikator;
     }
-    if (extLatest && extLatest.catalog) {
-      const match = extLatest.catalog.find(c => c.component_key === groupKey || c.code === groupKey);
-      if (match && match.description) {
-        const firstLine = match.description.split("\n")[0].trim();
-        return firstLine.length > 90 ? firstLine.slice(0, 87) + "..." : firstLine;
-      }
+    const match = [...extCatalogMap.values()].find(c => c.component_key === groupKey || c.code === groupKey);
+    if (match && match.description) {
+      const firstLine = match.description.split("\n")[0].trim();
+      return firstLine.length > 90 ? firstLine.slice(0, 87) + "..." : firstLine;
     }
     return groupKey;
   }
@@ -381,7 +439,7 @@
       kode: "Sasaran 3",
       nama: "Perilaku Birokrasi & Integritas",
       nama_singkat: "Integritas & Inovasi",
-      pembina: "Instrumen Pengumpulan Data IIIP & Desain IIIP"
+      pembina: getS3Indices().join(" & ")
     },
     4: {
       kode: "Sasaran 4",
@@ -396,18 +454,32 @@
       pembina: "IPP, OP, IKK, ZI"
     }
   };
+  const sasaranInstruments = {
+    1: ["PEMDI"],
+    2: ["SM"],
+    3: getS3Indices(),
+    4: ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"],
+    5: ["IPP", "OP", "IKK", "ZI"]
+  };
+  function getSasaranInstruments(id) {
+    return sasaranInstruments[Number(id)] || [];
+  }
+  function getDefaultExternalInstrument(id) {
+    return getSasaranInstruments(id)[0] || "PEMDI";
+  }
+  function getExternalSourceInst() {
+    return getDefaultExternalInstrument(state.extSrcSasaran);
+  }
+  function getSasaranLabel(id) {
+    const info = getSasaranInfo(id);
+    return `${info.kode} (${info.nama_singkat})`;
+  }
   function isSasaran4(id = state.internalSasaranId) {
     return String(id) === "4" || String(id) === "4-dev";
   }
 
   function getS4Relations() {
-    if (window.RB_SASARAN4_DEV && Array.isArray(window.RB_SASARAN4_DEV.relations)) {
-      return window.RB_SASARAN4_DEV.relations;
-    }
-    if (window.RB_SASARAN4_DEV_BASELINE && Array.isArray(window.RB_SASARAN4_DEV_BASELINE.relations)) {
-      return window.RB_SASARAN4_DEV_BASELINE.relations;
-    }
-    return [];
+    return getSasaranRelations(4, "internal");
   }
 
   function getSasaranInfo(id) {
@@ -683,7 +755,7 @@
   // 5. Query Instrumen & Komponen Sumber
   function listSources() {
     if (state.activeMenu === "external") {
-      return ["PEMDI"];
+      return getSasaranInstruments(state.extSrcSasaran);
     }
     if (isSasaran4()) {
       let indices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
@@ -695,28 +767,27 @@
     const sId = Number(state.internalSasaranId);
     if (sId === 4) return ["KK"];
     if (sId === 5) return ["IPP", "OP", "IKK", "ZI"];
-    if (sId === 3) return ["ALL", "IIIP", "DIIIP"];
-    return ["KK"];
+    if (sId === 3) return ["ALL", ...getS3Indices()];
+    return [];
   }
 
   function sourceComponents() {
     if (state.activeMenu === "external") {
-      if (!extLatest || !extLatest.relations) return [];
       const matched = new Set();
       const list = [];
-      for (const r of extLatest.relations) {
-        if (state.extDstSasaran && state.extDstSasaran !== "ALL") {
-          if (r.source_sasaran !== Number(state.extDstSasaran)) continue;
-        }
-        const dstInst = getInstrumentShortCode(r.source_group, r.source_instrument);
+      for (const r of getSasaranRelations(state.extSrcSasaran, "external")) {
+        if (state.extDstSasaran && state.extDstSasaran !== "ALL" && r.targetSasaran !== Number(state.extDstSasaran)) continue;
+        const dstInst = getInstrumentShortCode(r.destId, r.destIndex);
+        const srcInst = getInstrumentShortCode(r.sourceId, r.sourceIndex);
         if (state.dest && dstInst !== state.dest) continue;
-        if (!matched.has(r.target_group)) {
-          matched.add(r.target_group);
-          const nameDesc = getComponentGroupName(r.target_group);
+        if (state.source && srcInst !== state.source) continue;
+        if (!matched.has(r.sourceKelompok)) {
+          matched.add(r.sourceKelompok);
+          const nameDesc = getComponentGroupName(r.sourceKelompok);
           list.push({
-            id: r.target_group,
-            inst: "PEMDI",
-            sasaran: 1,
+            id: r.sourceKelompok,
+            inst: srcInst,
+            sasaran: r.sourceSasaran,
             name: nameDesc,
             groupTitle: nameDesc
           });
@@ -794,21 +865,16 @@
       }));
     }
     if (sId === 5) {
-      if (revisiData && revisiData.s5 && revisiData.s5.codes) {
-        const groups = new Set(
-          Object.values(revisiData.s5.codes)
-            .filter(c => c.inst === state.source)
-            .map(c => c.group)
-        );
-        return [...groups]
-          .sort((a, b) => a.localeCompare(b, "id"))
-          .map(g => ({ id: g, inst: state.source, name: g }));
+      const groups = new Set();
+      for (const r of getSasaranRelations(5, "internal")) {
+        if (r.sourceIndex === state.source && r.sourceKelompok) groups.add(r.sourceKelompok);
+        if (r.destIndex === state.source && r.destKelompok) groups.add(r.destKelompok);
       }
-      return [];
+      return [...groups].sort((a, b) => a.localeCompare(b, "id")).map(g => ({ id: g, inst: state.source, name: g }));
     }
     if (sId === 3) {
-      const s3Rels = relasiInternal.sasaran3?.relasi || [];
-      const currentSrc = state.source || "IIIP";
+      const s3Rels = getS3InternalLegacy();
+      const currentSrc = state.source || getS3DefaultIndices().src;
       const isAll = currentSrc === "ALL";
       const matched = new Set();
       const list = [];
@@ -831,12 +897,14 @@
 
   function listDestinations() {
     if (state.activeMenu === "external") {
-      const dstSasaran = state.extDstSasaran;
-      if (dstSasaran === 2 || state.extDirection === "1_2") return ["SM"];
-      if (dstSasaran === 3 || state.extDirection === "1_3") return ["IIIP", "DIIIP"];
-      if (dstSasaran === 4 || state.extDirection === "1_4") return ["KK", "IPPN", "SAKIP", "ELPPD"];
-      if (dstSasaran === 5 || state.extDirection === "1_5") return ["IPP", "OP", "IKK", "ZI"];
-      return ["SM", "IIIP", "DIIIP", "KK", "IPPN", "SAKIP", "ELPPD", "IPP", "OP", "IKK", "ZI"];
+      const direction = String(state.extDirection || "").match(/^(\d+)_(\d+)$/);
+      const target = state.extDstSasaran !== "ALL" ? Number(state.extDstSasaran) : (direction ? Number(direction[2]) : null);
+      if (Number.isFinite(target)) return getSasaranInstruments(target);
+      const all = [];
+      for (let id = 1; id <= 5; id++) {
+        if (id !== Number(state.extSrcSasaran)) all.push(...getSasaranInstruments(id));
+      }
+      return all;
     }
     if (isSasaran4()) {
       const allDevIndices = ["KK", "IPPN", "CKKP", "SPIP", "SAKIP", "ELPPD", "IKPA", "IPA"];
@@ -853,8 +921,9 @@
       return ["IPP", "OP", "IKK", "ZI"].filter(i => i !== state.source);
     }
     if (sId === 3) {
-      return state.source === "ALL" ? ["IIIP", "DIIIP"]
-        : ["IIIP", "DIIIP"].filter(i => i !== (state.source || "IIIP"));
+      const indices = getS3Indices();
+      return state.source === "ALL" ? indices
+        : indices.filter(i => i !== (state.source || getS3DefaultIndices().src));
     }
     return [];
   }
@@ -927,87 +996,69 @@
     const jk = window.RB_JENIS_KETERKAITAN;
 
     if (state.activeMenu === "external") {
-      if (!extLatest || !extLatest.relations) return [];
-      const rels = extLatest.relations;
+      for (const r of getSasaranRelations(state.extSrcSasaran, "external")) {
+        if (state.activeStage !== "matrix" && state.extDstSasaran !== "ALL" && r.targetSasaran !== Number(state.extDstSasaran)) continue;
 
-      for (const r of rels) {
-        // Pada Tahap 1 Matriks, semua arah sasaran (1->2, 1->3, 1->4, 1->5) harus selalu dihitung untuk mengisi sel-sel matriks
-        if (state.activeStage !== "matrix" && state.extDstSasaran && state.extDstSasaran !== "ALL") {
-          if (r.source_sasaran !== Number(state.extDstSasaran)) continue;
-        }
-
-        const externalInst = getInstrumentShortCode(r.source_group, r.source_instrument);
-        const srcInst = "PEMDI";
-        const dstInst = externalInst;
-
+        const srcInst = getInstrumentShortCode(r.sourceId, r.sourceIndex);
+        const dstInst = getInstrumentShortCode(r.destId, r.destIndex);
         if (state.source && srcInst !== state.source) continue;
         if (state.dest && dstInst !== state.dest) continue;
 
-        const subExt = getSubstansi(r.source);
-        const subPemdi = getSubstansi(r.target);
+        const subSrc = getSubstansi(r.sourceId);
+        const subDst = getSubstansi(r.destId);
+        const srcCat = extCatalogMap.get(r.sourceId);
+        const dstCat = extCatalogMap.get(r.destId);
+        const srcDesc = (subSrc && subSrc.indikator) ? subSrc.indikator : (srcCat ? String(srcCat.description || "").split("\n")[0].trim() : "");
+        const dstDesc = (subDst && subDst.indikator) ? subDst.indikator : (dstCat ? String(dstCat.description || "").split("\n")[0].trim() : "");
 
-        const extCat = extCatalogMap.get(r.source);
-        const pemdiCat = extCatalogMap.get(r.target);
-        const extDesc = (subExt && subExt.indikator) ? subExt.indikator : (extCat ? extCat.description.split("\n")[0].trim() : "");
-        const pemdiDesc = (subPemdi && subPemdi.indikator) ? subPemdi.indikator : (pemdiCat ? pemdiCat.description.split("\n")[0].trim() : "");
-
-        const meta = jk ? jk.getKlasifikasi(r.source_group, r.target_group, r.source, r.target, extDesc, pemdiDesc, subExt, subPemdi) : {
+        const meta = jk ? jk.getKlasifikasi(r.sourceKelompok, r.destKelompok, r.sourceId, r.destId, srcDesc, dstDesc, subSrc, subDst) : {
           jenis: "Mendukung",
           status: "USULAN / Perlu validasi",
-          alasan: (extDesc && pemdiDesc ? `"${pemdiDesc}" berkaitan dengan "${extDesc}".` : "")
+          alasan: (srcDesc && dstDesc ? `"${srcDesc}" berkaitan dengan "${dstDesc}".` : "")
         };
-
         if (state.rtype && meta.jenis !== state.rtype) continue;
 
-        const srcSasaranName = "Sasaran 1 — Transformasi Digital";
-        const dstSasaranName = (subExt && subExt.sasaran_name) ? subExt.sasaran_name : `Sasaran ${r.source_sasaran}`;
-
-        const srcInstName = "Pemerintah Digital (PEMDI)";
-        const dstInstName = (subExt && subExt.instrument_name) ? subExt.instrument_name : instName(dstInst);
-
-        const srcAspek = (subPemdi && subPemdi.aspek) ? subPemdi.aspek : "";
-        const dstAspek = (subExt && subExt.aspek) ? subExt.aspek : "";
-
-        const srcIndikator = (subPemdi && subPemdi.indikator) ? subPemdi.indikator : (pemdiDesc || r.target_group);
-        const dstIndikator = (subExt && subExt.indikator) ? subExt.indikator : (extDesc || r.source_group);
-
-        const srcSubindikator = (subPemdi && subPemdi.subindikator) ? subPemdi.subindikator : "";
-        const dstSubindikator = (subExt && subExt.subindikator) ? subExt.subindikator : "";
+        const srcInfo = getSasaranInfo(r.sourceSasaran);
+        const dstInfo = getSasaranInfo(r.targetSasaran);
+        const srcInstName = (subSrc && subSrc.instrument_name) ? subSrc.instrument_name : instName(srcInst);
+        const dstInstName = (subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dstInst);
+        const srcIndikator = (subSrc && subSrc.indikator) ? subSrc.indikator : (srcDesc || r.sourceKelompok);
+        const dstIndikator = (subDst && subDst.indikator) ? subDst.indikator : (dstDesc || r.destKelompok);
 
         matched.push({
-          id: `${r.target}_${r.source}_${r.reference_cell}`,
-          sasaran: `Sasaran 1 → Sasaran ${r.source_sasaran}`,
-          sourceSasaran: 1,
-          targetSasaran: r.source_sasaran,
-          sourceSasaranName: srcSasaranName,
-          destSasaranName: dstSasaranName,
+          id: r.id,
+          sasaran: `${srcInfo.kode} → ${dstInfo.kode}`,
+          sourceSasaran: r.sourceSasaran,
+          targetSasaran: r.targetSasaran,
+          sourceSasaranName: `${srcInfo.kode} — ${srcInfo.nama_singkat}`,
+          destSasaranName: `${dstInfo.kode} — ${dstInfo.nama_singkat}`,
           sourceInst: srcInst,
           sourceInstName: srcInstName,
           destInst: dstInst,
           destInstName: dstInstName,
-          source: r.target_group,
+          source: r.sourceKelompok,
           sourceName: srcIndikator,
-          sourceAspek: srcAspek,
+          sourceAspek: (subSrc && subSrc.aspek) ? subSrc.aspek : r.sourceKelompok,
           sourceIndikator: srcIndikator,
-          sourceSubindikator: srcSubindikator,
-          dest: r.source_group,
+          sourceSubindikator: (subSrc && subSrc.subindikator) ? subSrc.subindikator : "",
+          dest: r.destKelompok,
           destName: dstIndikator,
-          destAspek: dstAspek,
+          destAspek: (subDst && subDst.aspek) ? subDst.aspek : r.destKelompok,
           destIndikator: dstIndikator,
-          destSubindikator: dstSubindikator,
+          destSubindikator: (subDst && subDst.subindikator) ? subDst.subindikator : "",
           type: meta.jenis,
           level: meta.status || "USULAN / Perlu validasi",
           tingkat: null,
-          codes: [[r.target, r.source]],
-          sourceCode: r.target,
-          destCode: r.source,
-          sourceData: subPemdi,
-          destData: subExt,
-          sourceQuestion: pemdiDesc,
-          destQuestion: extDesc,
-          reason: meta.alasan || (pemdiDesc && extDesc ? `"${pemdiDesc}" berkaitan dengan "${extDesc}".` : "Keterkaitan operasional antar-indikator sasaran strategis."),
-          recommendation: meta.rekomendasi || "Disarankan penguatan koordinasi teknis dan pemanfaatan hasil pengukuran ini untuk menyelaraskan implementasi sistem informasi sektoral dengan kerangka arsitektur Pemerintah Digital nasional.",
-          refs: [`Sheet: ${r.sheet}; Sel Rujukan: ${r.reference_cell}; Sel Sumber: ${r.source_cell}`]
+          codes: [[r.sourceId, r.destId]],
+          sourceCode: r.sourceId,
+          destCode: r.destId,
+          sourceData: subSrc,
+          destData: subDst,
+          sourceQuestion: srcDesc,
+          destQuestion: dstDesc,
+          reason: meta.alasan || (srcDesc && dstDesc ? `"${srcDesc}" berkaitan dengan "${dstDesc}".` : r.alasanSubstantif || "Keterkaitan operasional antar-indikator sasaran strategis."),
+          recommendation: meta.rekomendasi || r.rekomendasi || "Disarankan koordinasi teknis dan pemanfaatan hasil pengukuran untuk menyelaraskan implementasi kedua indikator.",
+          refs: [`Sheet: sasaran${r.sasaran}.js; No: ${r.no}`]
         });
       }
       return matched;
@@ -1140,7 +1191,7 @@
           rawItem: r,
           isReversed: isReversed,
           recordingDirection: `${r.sourceIndex} (${r.sourceName}) → ${r.destIndex} (${r.destName})`,
-          refs: [`No: ${r.no}; Sheet: sasaran 4 -dev; Jejak: ${r.jejakSumber || '-'}`]
+          refs: [`No: ${r.no}; Sheet: sasaran4.js; Jejak: ${r.jejakSumber || '-'}`]
         });
       }
       return matched;
@@ -1269,99 +1320,80 @@
     }
 
     if (sId === 5) {
-      // Sasaran 5: 2.205 pasangan kode unik dinormalisasi berdasarkan indeks sumber terpilih
-      if (revisiData && revisiData.s5 && revisiData.s5.relations) {
-        for (const l of revisiData.s5.relations) {
-          const a = revisiData.s5.codes[l.s];
-          const b = revisiData.s5.codes[l.t];
-          if (!a || !b) continue;
-
-          let src = a, dst = b;
-          if (a.inst !== state.source && b.inst === state.source) {
-            src = b; dst = a;
-          } else if (a.inst !== state.source) {
-            continue;
-          }
-
-          if (src.inst === dst.inst) continue;
-
-          const subSrc = getSubstansi(src.code);
-          const subDst = getSubstansi(dst.code);
-
-          const srcSasaranName = "Sasaran 5 — Pelayanan Publik";
-          const dstSasaranName = "Sasaran 5 — Pelayanan Publik";
-
-          const srcInstName = (subSrc && subSrc.instrument_name) ? subSrc.instrument_name : instName(src.inst);
-          const dstInstName = (subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dst.inst);
-
-          const srcAspek = (subSrc && subSrc.aspek) ? subSrc.aspek : src.group;
-          const dstAspek = (subDst && subDst.aspek) ? subDst.aspek : dst.group;
-
-          const srcIndikator = (subSrc && subSrc.indikator) ? subSrc.indikator : (src.question || src.group);
-          const dstIndikator = (subDst && subDst.indikator) ? subDst.indikator : (dst.question || dst.group);
-
-          const srcSubindikator = (subSrc && subSrc.subindikator) ? subSrc.subindikator : "";
-          const dstSubindikator = (subDst && subDst.subindikator) ? subDst.subindikator : "";
-
-          const metaS5 = (jk && typeof jk.classifySasaran5 === "function")
-            ? jk.classifySasaran5(src.group, dst.group, src.inst, dst.inst, src.code, dst.code, src.question, dst.question, subSrc, subDst)
-            : {
-              jenis: "Mendukung",
-              status: null,
-              alasan: (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : "")
-            };
-
-          if (state.rtype && metaS5.jenis !== state.rtype) continue;
-
-          matched.push({
-            id: l.id,
-            sasaran: "Sasaran 5",
-            sourceSasaran: 5,
-            targetSasaran: 5,
-            sourceSasaranName: srcSasaranName,
-            destSasaranName: dstSasaranName,
-            sourceInst: src.inst,
-            sourceInstName: srcInstName,
-            source: src.group,
-            sourceName: srcIndikator,
-            sourceAspek: srcAspek,
-            sourceIndikator: srcIndikator,
-            sourceSubindikator: srcSubindikator,
-            destInst: dst.inst,
-            destInstName: dstInstName,
-            dest: dst.group,
-            destName: dstIndikator,
-            destAspek: dstAspek,
-            destIndikator: dstIndikator,
-            destSubindikator: dstSubindikator,
-            type: metaS5.jenis,
-            level: "Tervalidasi Substantif",
-            tingkat: l.level.join(", "),
-            codes: [[src.code, dst.code]],
-            sourceCode: src.code,
-            destCode: dst.code,
-            sourceData: subSrc,
-            destData: subDst,
-            sourceQuestion: src.question,
-            destQuestion: dst.question,
-            reason: metaS5.alasan || (src.question && dst.question ? `"${src.question}" berkaitan dengan "${dst.question}".` : (src.question ? `"${src.question}"` : (dst.question ? `"${dst.question}"` : `Keterkaitan substantif antara ${src.group} dan ${dst.group}.`))),
-            recommendation: metaS5.rekomendasi || "Disarankan koordinasi operasional berkelanjutan dan pertukaran informasi hasil evaluasi antar-pengelola instrumen pelayanan publik.",
-            refs: l.cells || []
-          });
+      for (const r of getSasaranRelations(5, "internal")) {
+        let src = r;
+        let dst = r;
+        let reversed = false;
+        if (r.sourceIndex !== state.source && r.destIndex === state.source) {
+          reversed = true;
+        } else if (r.sourceIndex !== state.source) {
+          continue;
         }
+        const srcGroup = reversed ? r.destKelompok : r.sourceKelompok;
+        const dstGroup = reversed ? r.sourceKelompok : r.destKelompok;
+        const srcInst = reversed ? r.destIndex : r.sourceIndex;
+        const dstInst = reversed ? r.sourceIndex : r.destIndex;
+        const srcCode = reversed ? r.destId : r.sourceId;
+        const dstCode = reversed ? r.sourceId : r.destId;
+        const srcName = reversed ? r.destName : r.sourceName;
+        const dstName = reversed ? r.sourceName : r.destName;
+        const subSrc = getSubstansi(srcCode);
+        const subDst = getSubstansi(dstCode);
+        const srcIndikator = (subSrc && subSrc.indikator) ? subSrc.indikator : srcName;
+        const dstIndikator = (subDst && subDst.indikator) ? subDst.indikator : dstName;
+        const meta = (jk && typeof jk.classifySasaran5 === "function")
+          ? jk.classifySasaran5(srcGroup, dstGroup, srcInst, dstInst, srcCode, dstCode, srcName, dstName, subSrc, subDst)
+          : { jenis: "Mendukung", status: null, alasan: r.alasanSubstantif };
+        if (state.rtype && meta.jenis !== state.rtype) continue;
+
+        matched.push({
+          id: r.id,
+          sasaran: "Sasaran 5",
+          sourceSasaran: 5,
+          targetSasaran: 5,
+          sourceSasaranName: "Sasaran 5 — Pelayanan Publik",
+          destSasaranName: "Sasaran 5 — Pelayanan Publik",
+          sourceInst,
+          sourceInstName: (subSrc && subSrc.instrument_name) ? subSrc.instrument_name : instName(srcInst),
+          source: srcGroup,
+          sourceName: srcIndikator,
+          sourceAspek: (subSrc && subSrc.aspek) ? subSrc.aspek : srcGroup,
+          sourceIndikator: srcIndikator,
+          sourceSubindikator: (subSrc && subSrc.subindikator) ? subSrc.subindikator : "",
+          destInst,
+          destInstName: (subDst && subDst.instrument_name) ? subDst.instrument_name : instName(dstInst),
+          dest: dstGroup,
+          destName: dstIndikator,
+          destAspek: (subDst && subDst.aspek) ? subDst.aspek : dstGroup,
+          destIndikator: dstIndikator,
+          destSubindikator: (subDst && subDst.subindikator) ? subDst.subindikator : "",
+          type: meta.jenis,
+          level: "Tervalidasi Substantif",
+          tingkat: r.risikoRedundansi,
+          codes: [[srcCode, dstCode]],
+          sourceCode: srcCode,
+          destCode: dstCode,
+          sourceData: subSrc,
+          destData: subDst,
+          sourceQuestion: srcName,
+          destQuestion: dstName,
+          reason: meta.alasan || r.alasanSubstantif || `"${srcName}" berkaitan dengan "${dstName}".`,
+          recommendation: meta.rekomendasi || r.rekomendasi,
+          refs: [`Sheet: sasaran5.js; No: ${r.no}`]
+        });
       }
       return matched;
     }
 
     if (sId === 3) {
-      // Sasaran 3: 72 relasi internal resmi sesuai sheet Copy of Sasaran 3 dari Bahan paparan Kamis (30092026) (1).xlsx
-      const s3Rels = relasiInternal.sasaran3?.relasi || [];
+      const s3Rels = getS3InternalLegacy();
       // Pilihan "Semua Indeks" memakai orientasi tunggal agar satu pasangan
       // tidak terhitung dua kali. Jika indeks pembanding ditetapkan, gunakan
       // arah sebaliknya supaya pilihan tersebut tetap bermakna.
+      const s3Default = getS3DefaultIndices();
       const currentSrc = state.source === "ALL"
-        ? (state.dest === "DIIIP" ? "IIIP" : "DIIIP")
-        : (state.source || "IIIP");
+        ? (state.dest === s3Default.src ? s3Default.dst : s3Default.src)
+        : (state.source || s3Default.src);
 
       for (const r of s3Rels) {
         let srcCode = r.asal_kode;
@@ -1396,10 +1428,10 @@
         // Pada instrumen survei IIIP, "indikator" pada katalog adalah nama BLOK,
         // sedangkan butir yang dipetakan ialah PERTANYAAN (subindikator).
         // Pertahankan judul indikator desain DIIIP pada sisi desain.
-        const srcIndikator = srcInst === "IIIP"
+        const srcIndikator = srcInst === S3_SURVEY_INST
           ? ((subSrc && subSrc.subindikator) || srcName)
           : ((subSrc && subSrc.indikator) || srcName);
-        const dstIndikator = dstInst === "IIIP"
+        const dstIndikator = dstInst === S3_SURVEY_INST
           ? ((subDst && subDst.subindikator) || dstName)
           : ((subDst && subDst.indikator) || dstName);
 
@@ -1436,7 +1468,7 @@
           destQuestion: dstName,
           reason: (jk && jk.sasaran3Justifikasi && (jk.sasaran3Justifikasi[`${srcCode}_${dstCode}`]?.alasan || jk.sasaran3Justifikasi[r.id]?.alasan)) || r.alasan || `Indikator "${srcName}" berkaitan dengan "${dstName}".`,
           recommendation: (jk && jk.sasaran3Justifikasi && (jk.sasaran3Justifikasi[`${srcCode}_${dstCode}`]?.rekomendasi || jk.sasaran3Justifikasi[r.id]?.rekomendasi)) || r.rekomendasi || "Disarankan menyelaraskan hasil evaluasi kedua indikator yang dibandingkan.",
-          refs: [r.sumber || "Bahan paparan Kamis (30092026) (1).xlsx, Copy of Sasaran 3"]
+          refs: [r.sumber || "Sheet: sasaran3.js"]
         });
       }
       return matched;
@@ -1629,7 +1661,7 @@
         state.component,
         Number(state.internalSasaranId) === 3 && state.activeMenu === "internal"
           ? (state.source === "ALL" ? "Semua Indikator & Pertanyaan Survei"
-            : state.source === "IIIP" ? "Semua Pertanyaan Survei" : "Semua Indikator Desain")
+            : state.source === S3_SURVEY_INST ? "Semua Pertanyaan Survei" : "Semua Indikator Desain")
           : "Semua Indikator"
       );
     }
@@ -1677,7 +1709,7 @@
       }
     }
     if (dom.selectExtSourceSasaran) {
-      dom.selectExtSourceSasaran.value = "1";
+      dom.selectExtSourceSasaran.value = String(state.extSrcSasaran);
     }
     if (dom.selectExtDestSasaran) {
       dom.selectExtDestSasaran.value = (state.extDstSasaran !== undefined && state.extDstSasaran !== null) ? String(state.extDstSasaran) : "ALL";
@@ -1690,7 +1722,7 @@
     }
     if (dom.labelComponentSelect) {
       dom.labelComponentSelect.textContent = state.activeMenu === "internal" && Number(state.internalSasaranId) === 3
-        ? (state.source === "ALL" ? "Indikator / Pertanyaan:" : state.source === "IIIP" ? "Pertanyaan Survei:" : "Indikator Desain:")
+        ? (state.source === "ALL" ? "Indikator / Pertanyaan:" : state.source === S3_SURVEY_INST ? "Pertanyaan Survei:" : "Indikator Desain:")
         : "Indikator:";
     }
     if (dom.inputSearchFree) {
@@ -1706,7 +1738,8 @@
     dom.logicNote.classList.remove("s4dev-logic-note");
 
     if (state.activeMenu === "external") {
-      dom.logicNote.innerHTML = `<strong>Relasi Eksternal Antar-Sasaran:</strong> Memetakan hubungan keterkaitan indikator dari <b>Sasaran 1 (Pemerintah Digital) menuju Sasaran 2, 3, 4, dan 5</b>. Pasangan indikator yang telah ditelaah diklasifikasikan ke dalam lima jenis keterkaitan standar. Klik angka pada sel matriks untuk membuka Peta Relasi.`;
+      const summary = [1, 2, 3, 4, 5].map(id => `${id}: ${getSasaranRelations(id, "external").length}`).join(", ");
+      dom.logicNote.innerHTML = `<strong>Relasi Eksternal Antar-Sasaran:</strong> Memetakan hubungan keterkaitan indikator antarsasaran strategis RB. Jumlah relasi per tab: <b>${summary}</b>. Klik angka pada sel matriks untuk membuka Peta Relasi.`;
       return;
     }
 
@@ -1716,20 +1749,21 @@
       dom.logicNote.innerHTML = `
         <div class="s4dev-logic-copy">
           <strong>Cara membaca matriks Sasaran 4</strong>
-          <span>Setiap angka menunjukkan jumlah relasi antarindeks. Data mencakup <b>${devTotal.toLocaleString("id-ID")} relasi antarindeks</b> dalam tiga kelompok utama.</span>
+          <span>Setiap angka menunjukkan jumlah relasi antarindeks. Data mencakup <b>${devTotal.toLocaleString("id-ID")} relasi antarindeks</b> dari sheet <code>sasaran4.js</code>.</span>
           <span>Klik angka pada sel untuk meninjau diagram alur dan daftar relasinya.</span>
         </div>`;
       return;
     }
     const sId = Number(state.internalSasaranId);
+    const count = getSasaranRelations(sId, "internal").length;
     if (sId === 5) {
-      const totalPairs = revisiData?.metadata?.count_group_pairs || 128;
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 5:</strong> Satu angka pada sel menunjukkan banyaknya <b>indikator tujuan yang berbeda</b> yang mempunyai setidaknya satu rujukan kode resmi. Kode skala penilaian (1–5) dihitung sebagai satu indikator tujuan dan tidak dijumlahkan berulang. Terdapat <b>${totalPairs} pasangan indikator unik</b> pada keseluruhan Sasaran 5 (<strong>49 pasangan</strong> saat indeks sumber IPP).`;
+      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 5:</strong> Satu angka pada sel menunjukkan banyaknya indikator tujuan yang berbeda. Sheet <code>sasaran5.js</code> memuat <b>${count.toLocaleString("id-ID")} relasi internal</b>.`;
     } else if (sId === 4) {
-      const s4Count = (sasaranData.relations || []).filter(r => r.sourceSasaran === 4 && r.targetSasaran === 4).length;
-      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan banyaknya relasi indikator sesuai <b>${s4Count} hubungan keterkaitan resmi Sasaran 4</b> antara Kapabilitas Kelembagaan dan 7 indeks pembanding.`;
+      dom.logicNote.innerHTML = `<strong>Cara membaca matriks Sasaran 4:</strong> Angka menunjukkan relasi indikator dari sheet <code>sasaran4.js</code>, yaitu <b>${count.toLocaleString("id-ID")} hubungan keterkaitan</b>.`;
     } else if (sId === 3) {
-      dom.logicNote.innerHTML = `<strong>Status Data Sasaran 3:</strong> Menggunakan sheet <b>Copy of Sasaran 3</b> dari file <code>Bahan paparan Kamis (30092026) (1).xlsx</code> dengan 2 indeks aktif: <b>Instrumen Pengumpulan Data IIIP</b> (92 pertanyaan) dan <b>Desain IIIP</b> (34 indikator), memetakan <b>72 relasi internal aktual</b> (72 pasangan unik).`;
+      dom.logicNote.innerHTML = `<strong>Status Data Sasaran 3:</strong> Menggunakan sheet <code>sasaran3.js</code> dengan <b>${count.toLocaleString("id-ID")} relasi internal aktual</b> antara ${getS3Indices().map(instName).join(" dan ")}.`;
+    } else {
+      dom.logicNote.innerHTML = `<strong>Status Data Sasaran ${sId}:</strong> Sheet <code>sasaran${sId}.js</code> tidak memuat relasi internal; gunakan menu <b>Relasi Eksternal</b> untuk melihat keterkaitannya.`;
     }
   }
 
@@ -2072,43 +2106,36 @@
   }
 
   function renderSasaran3Matrix() {
-    dom.matrixTitle.textContent = "Matriks Relasi Internal Sasaran 3 — Indeks Inovasi Instansi Pemerintah (IIIP)";
-    dom.matrixDesc.textContent = "Format 2×2 menyandingkan Instrumen Pengumpulan Data IIIP dan Desain IIIP berdasarkan sheet Copy of Sasaran 3 dari file Bahan paparan Kamis (30092026) (1).xlsx. Klik angka > 0 untuk membuka Peta Relasi.";
-
-    // Selalu hitung sesuai indikator/pertanyaan, jenis, indeks, dan kata kunci yang
-    // dipilih pengguna. 72 merupakan total database, bukan angka konstan matriks.
     const s3Rels = filteredRelations();
-    const s3AllCount = relasiInternal.sasaran3?.relasi?.length || 0;
+    const s3AllRels = getS3InternalLegacy();
+    const s3AllCount = s3AllRels.length || 0;
     const s3UniqueCount = new Set(s3Rels.map(r => r.id)).size;
+    const s3Default = getS3DefaultIndices();
+    const indices = getS3Indices();
+    const label = indices.map(instName).join(" dan ");
+
+    dom.matrixTitle.textContent = "Matriks Relasi Internal Sasaran 3";
+    dom.matrixDesc.textContent = s3UniqueCount === s3AllCount
+      ? `Format matriks menyandingkan ${label} berdasarkan sheet sasaran3.js. Klik angka > 0 untuk membuka Peta Relasi.`
+      : `Menampilkan ${s3UniqueCount} dari ${s3AllCount} pasangan relasi sesuai filter. Angka matriks ikut berubah saat indikator atau pertanyaan dipilih.`;
     dom.pairCount.textContent = s3UniqueCount.toLocaleString("id-ID");
     dom.pairUnit.textContent = state.component || state.search || state.rtype || state.dest
       ? "relasi sesuai filter" : "pasangan relasi unik";
-    dom.matrixDesc.textContent = s3UniqueCount === s3AllCount
-      ? "Format 2×2 menyandingkan Instrumen Pengumpulan Data IIIP dan Desain IIIP berdasarkan sheet Copy of Sasaran 3. Klik angka > 0 untuk membuka Peta Relasi."
-      : `Menampilkan ${s3UniqueCount} dari ${s3AllCount} pasangan relasi sesuai filter. Angka matriks ikut berubah saat indikator atau pertanyaan dipilih.`;
 
-    const insts = [
-      {
-        code: "IIIP",
-        name: "Instrumen Pengumpulan Data Survei Indeks Inovasi Instansi Pemerintah (IIIP)",
-        shortName: "Instrumen Pengumpulan Data IIIP",
-        pembina: "LAN RI",
-        itemCount: 92
-      },
-      {
-        code: "DIIIP",
-        name: "Desain Indeks Inovasi Instansi Pemerintah (IIIP)",
-        shortName: "Desain IIIP",
-        pembina: "LAN RI",
-        itemCount: 34
+    const insts = indices.map(code => {
+      const ids = new Set();
+      for (const r of s3AllRels) {
+        if (r.asal_instrumen === code && r.asal_kode) ids.add(r.asal_kode);
+        if (r.tujuan_instrumen === code && r.tujuan_kode) ids.add(r.tujuan_kode);
       }
-    ];
+      return { code, name: instName(code), shortName: instName(code), pembina: "", itemCount: ids.size };
+    });
 
-    const relCount = s3UniqueCount; // dihitung dinamis dari filter aktif
-    const filteredDesignCode = state.component &&
-      (state.source === "DIIIP" || (state.source === "ALL" && state.component.startsWith("SS3-DIIIP"))) ? state.component : "";
-    const filteredSurveyCode = state.component &&
-      (state.source === "IIIP" || (state.source === "ALL" && state.component.startsWith("SS3-IIIP"))) ? state.component : "";
+    const cellCount = (src, dst) => s3Rels.filter(r => r.sourceInst === src && r.destInst === dst).length;
+    const rowTotals = new Map(insts.map(src => [src.code, insts.reduce((sum, dst) => sum + (src.code === dst.code ? 0 : cellCount(src.code, dst.code)), 0)]));
+    const colTotals = new Map(insts.map(dst => [dst.code, insts.reduce((sum, src) => sum + (src.code === dst.code ? 0 : cellCount(src.code, dst.code)), 0)]));
+    const filteredDesignCode = state.component && state.component.startsWith(`SS3-${s3Default.src}`) ? state.component : "";
+    const filteredSurveyCode = state.component && state.component.startsWith(`SS3-${s3Default.dst}`) ? state.component : "";
 
     const headerColsHtml = insts.map(inst => `
       <th title="${esc(inst.name)}">
@@ -2124,11 +2151,12 @@
         if (srcInst.code === dstInst.code) {
           return `<td class="matrix-cell-diag" title="Diagonal: Indeks yang sama">—</td>`;
         }
-        if (relCount === 0) return `<td><span class="matrix-cell-zero">0</span></td>`;
+        const count = cellCount(srcInst.code, dstInst.code);
+        if (count === 0) return `<td><span class="matrix-cell-zero">0</span></td>`;
         return `
           <td class="matrix-cell-active">
-            <div class="matrix-cell-btn" data-s3-src="${srcInst.code}" data-s3-dst="${dstInst.code}" role="button" tabindex="0" title="Buka Peta Relasi ${srcInst.code} → ${dstInst.code} (${relCount} relasi tersaring)">
-              <span class="cell-num">${relCount}</span>
+            <div class="matrix-cell-btn" data-s3-src="${srcInst.code}" data-s3-dst="${dstInst.code}" role="button" tabindex="0" title="Buka Peta Relasi ${srcInst.code} → ${dstInst.code} (${count} relasi tersaring)">
+              <span class="cell-num">${count}</span>
             </div>
           </td>
         `;
@@ -2138,16 +2166,16 @@
         <tr>
           <td class="row-header">
             <div style="font-weight:700; color:var(--navy-dark); font-size:12px;">${srcInst.code} — ${esc(srcInst.shortName)}</div>
-            <div class="row-inst-meta" style="font-size:10px; color:var(--ink-muted);">${esc(srcInst.pembina)} · ${srcInst.itemCount} Indikator/Pertanyaan</div>
+            <div class="row-inst-meta" style="font-size:10px; color:var(--ink-muted);">${srcInst.itemCount} Indikator/Pertanyaan</div>
           </td>
           ${cells}
-          <td style="font-weight:700; color:var(--navy-dark); background:#f8fafc; font-size:13px;">${relCount}</td>
+          <td style="font-weight:700; color:var(--navy-dark); background:#f8fafc; font-size:13px;">${rowTotals.get(srcInst.code)}</td>
         </tr>
       `;
     }).join("");
 
-    const totalColsHtml = insts.map(() => `
-      <td style="font-weight:700; background:#f8fafc; color:var(--navy-dark); font-size:13px;">${relCount}</td>
+    const totalColsHtml = insts.map(inst => `
+      <td style="font-weight:700; background:#f8fafc; color:var(--navy-dark); font-size:13px;">${colTotals.get(inst.code)}</td>
     `).join("");
 
     dom.matrixTableContainer.innerHTML = `
@@ -2167,34 +2195,32 @@
               <div class="row-inst-meta">Total Agregasi Pasangan Unik</div>
             </td>
             ${totalColsHtml}
-            <td style="font-weight:800; background:#dbeafe; color:#1e40af; font-size:15px;">${relCount}</td>
+            <td style="font-weight:800; background:#dbeafe; color:#1e40af; font-size:15px;">${s3UniqueCount}</td>
           </tr>
         </tbody>
       </table>
     `;
 
-    // Pasang Event Klik Sel Matriks S3
     dom.matrixTableContainer.querySelectorAll("[data-s3-src]").forEach(btn => {
       btn.onclick = () => {
-        // Pertahankan konteks filter, termasuk saat pengguna mengeklik sisi
-        // matriks berlawanan. Peta Ringkas selalu berorientasi Desain → Survei.
+        const src = btn.dataset.s3Src;
+        const dst = btn.dataset.s3Dst;
         if (filteredDesignCode) {
           state.s3SelectedIndicator = filteredDesignCode;
           state.s3SelectedSurveyQuestion = "";
         } else if (filteredSurveyCode) {
           state.s3SelectedSurveyQuestion = filteredSurveyCode;
-          const relatedDesign = s3Rels.find(r => r.sourceInst === "DIIIP");
+          const relatedDesign = s3Rels.find(r => r.sourceInst === s3Default.src);
           if (relatedDesign) state.s3SelectedIndicator = relatedDesign.source;
         } else {
           state.s3SelectedSurveyQuestion = "";
         }
-        // Pertahankan pilihan "Semua Indeks Sumber" ketika masuk Peta.
-        // Diagram ringkas tetap menggunakan orientasi Desain → Survei.
-        if (state.source !== "ALL") state.source = "DIIIP";
+        state.s3Compact = src === s3Default.src;
+        state.source = src;
         state.component = filteredDesignCode || "";
-        state.dest = "IIIP";
+        state.dest = dst;
         state.chosenSrc = filteredDesignCode || "";
-        state.chosenInst = "IIIP";
+        state.chosenInst = dst;
         state.chosenDest = "";
         state.focusRelation = null;
         populateFilters();
@@ -2202,7 +2228,7 @@
       };
     });
 
-    dom.topbarSummaryText.textContent = `Sasaran 3: ${relCount} dari ${s3AllCount} Relasi Internal (Copy of Sasaran 3)`;
+    dom.topbarSummaryText.textContent = `Sasaran 3: ${s3UniqueCount} dari ${s3AllCount} Relasi Internal (sasaran3.js)`;
   }
 
   // Render Matriks Relasi Eksternal
@@ -2225,22 +2251,16 @@
       };
     });
 
-    // Pasangan kelompok komponen dan relasi dihitung secara dinamis dari filter aktif
-    const allFiltered = filteredRelations();
-    const pairs = groupRelations(allFiltered);
-    const groupCounts = {};
     const itemCounts = {};
-    for (const p of pairs) {
-      const key = `${p.sourceSasaran}_${p.destSasaran}`;
-      groupCounts[key] = (groupCounts[key] || 0) + 1;
-      itemCounts[key] = (itemCounts[key] || 0) + (p.items ? p.items.length : 1);
+    for (let id = 1; id <= 5; id++) {
+      for (const r of getSasaranRelations(id, "external")) {
+        const key = `${r.sourceSasaran}_${r.targetSasaran}`;
+        itemCounts[key] = (itemCounts[key] || 0) + 1;
+      }
     }
 
-    // Sasaran Asal (Baris): Sasaran 1 (Transformasi Digital)
-    const activeSrcSasarans = sasarans.filter(s => s.id === 1);
-
-    // Sasaran Tujuan (Kolom): Sasaran 2, 3, 4, 5
-    let activeDstSasarans = sasarans.filter(s => s.id !== 1);
+    const activeSrcSasarans = sasarans.filter(s => getSasaranRelations(s.id, "external").length > 0);
+    let activeDstSasarans = sasarans;
     if (state.extDstSasaran && state.extDstSasaran !== "ALL") {
       activeDstSasarans = sasarans.filter(s => s.id === Number(state.extDstSasaran));
     }
@@ -2256,17 +2276,14 @@
 
     const rowsHtml = activeSrcSasarans.map(src => {
       let rowSumItems = 0;
-      let rowSumGroups = 0;
       const cells = activeDstSasarans.map(dst => {
         if (src.id === dst.id) {
           return `<td class="matrix-cell-diag" title="Diagonal: Relasi internal sasaran diakses melalui menu Relasi Internal">-</td>`;
         }
 
         const key = `${src.id}_${dst.id}`;
-        const cntGroups = groupCounts[key] || 0;
         const cntItems = itemCounts[key] || 0;
         rowSumItems += cntItems;
-        rowSumGroups += cntGroups;
 
         if (cntItems > 0) {
           return `
@@ -2306,7 +2323,7 @@
       return `<td style="font-weight:700; background:#f8fafc; color:var(--ink-muted);">0</td>`;
     }).join("");
 
-    const totalAllItems = pairs.reduce((sum, p) => sum + (p.items ? p.items.length : 1), 0);
+    const totalAllItems = Object.values(itemCounts).reduce((sum, count) => sum + count, 0);
 
     dom.matrixTableContainer.innerHTML = `
       <table class="matrix-table">
@@ -2340,9 +2357,10 @@
     }
 
     if (dom.matrixFineprint) {
+      const sheetSummary = [1, 2, 3, 4, 5].map(id => `${id}: ${getSasaranRelations(id, "external").length}`).join(", ");
       dom.matrixFineprint.innerHTML = `
         <span class="fineprint-text">
-          ℹ <strong>Keterangan Matriks Eksternal:</strong> Seluruh rujukan relasi eksternal berorientasi dari <strong>Sasaran 1 (Pemerintah Digital)</strong> menuju sasaran tujuan (Sasaran 2 s.d. 5). Baris menunjukkan Sasaran Asal (Sasaran 1) dan Kolom menunjukkan Sasaran Tujuan (Sasaran 2: 17, Sasaran 3: 120, Sasaran 4: 76, Sasaran 5: 1.418). Total 1.631 relasi rujukan aktif. Klik sel berwarna biru untuk membuka Peta Relasi.
+          ℹ <strong>Keterangan Matriks Eksternal:</strong> Baris menunjukkan Sasaran Asal dan Kolom menunjukkan Sasaran Tujuan. Jumlah relasi per tab: ${sheetSummary}. Total ${totalAllItems.toLocaleString("id-ID")} relasi rujukan aktif. Klik sel berwarna biru untuk membuka Peta Relasi.
         </span>
       `;
     }
@@ -2356,12 +2374,12 @@
         state.extSrcSasaran = Number(srcId);
         state.extDstSasaran = Number(dstId);
         if (dom.selectExtSourceSasaran) {
-          dom.selectExtSourceSasaran.value = "1";
+          dom.selectExtSourceSasaran.value = String(srcId);
         }
         if (dom.selectExtDestSasaran) {
           dom.selectExtDestSasaran.value = String(dstId);
         }
-        state.source = "PEMDI";
+        state.source = getDefaultExternalInstrument(Number(srcId));
         state.component = "";
         state.dest = "";
         state.chosenInst = "";
@@ -3066,7 +3084,7 @@
       }
     });
 
-    const srcCard = document.getElementById("card_src_PEMDI");
+    const srcCard = document.getElementById(`card_src_${getExternalSourceInst()}`);
     if (srcCard) srcCard.classList.add("card-source-highlighted");
 
     const dstCard = document.getElementById(`card_dst_${code}`);
@@ -3085,7 +3103,7 @@
       p.setAttribute("marker-end", "url(#arrowMacroExternal)");
     });
 
-    const srcCard = document.getElementById("card_src_PEMDI");
+    const srcCard = document.getElementById(`card_src_${getExternalSourceInst()}`);
     if (srcCard) srcCard.classList.remove("card-source-highlighted");
 
     if (dom.containerDestCards) {
@@ -3104,8 +3122,8 @@
     const svgRect = dom.diagramSvg.getBoundingClientRect();
     if (!svgRect || svgRect.width === 0 || svgRect.height === 0) return;
 
-    // Pin Sumber: PEMDI di Kiri
-    const pinSrc = document.getElementById("pin_src_PEMDI");
+    const srcInst = getExternalSourceInst();
+    const pinSrc = document.getElementById(`pin_src_${srcInst}`);
     if (!pinSrc || typeof pinSrc.getBoundingClientRect !== "function") return;
     const rectSrc = pinSrc.getBoundingClientRect();
 
@@ -3138,7 +3156,7 @@
               fill="none"
               stroke-opacity="0.85"
               style="cursor:pointer;"
-              title="PEMDI → ${esc(inst.name)} (${inst.relCount} relasi). Klik untuk rincian di Tahap 3" />
+              title="${esc(srcInst)} → ${esc(inst.name)} (${inst.relCount} relasi). Klik untuk rincian di Tahap 3" />
         <polygon points="${arrowTipX},${y2} ${arrowTipX - 9},${y2 - 5} ${arrowTipX - 9},${y2 + 5}"
                  fill="#0f766e"
                  class="macro-arrow-head"
@@ -3152,7 +3170,7 @@
     svgGroup.querySelectorAll("[data-dst-inst]").forEach(path => {
       const code = path.dataset.dstInst;
       path.onclick = () => {
-        state.source = "PEMDI";
+        state.source = getExternalSourceInst();
         state.component = "";
         state.dest = code;
         state.rtype = "";
@@ -3176,34 +3194,30 @@
       dom.graphToolbar.style.display = "none";
     }
 
-    const allRels = (extLatest && extLatest.relations) ? extLatest.relations : [];
-    const rels = allRels.filter(r => {
-      if (state.extDstSasaran && state.extDstSasaran !== "ALL") {
-        if (r.source_sasaran !== Number(state.extDstSasaran)) return false;
-      }
-      return true;
-    });
-
-    const dstSasaranNum = state.extDstSasaran && state.extDstSasaran !== "ALL" ? Number(state.extDstSasaran) : (rels[0] ? rels[0].source_sasaran : 5);
+    const srcSasaranId = Number(state.extSrcSasaran);
+    const srcInfo = getSasaranInfo(srcSasaranId);
+    const srcInst = getExternalSourceInst();
+    const rels = getSasaranRelations(srcSasaranId, "external").filter(r =>
+      state.extDstSasaran === "ALL" || r.targetSasaran === Number(state.extDstSasaran)
+    );
+    const dstSasaranNum = state.extDstSasaran !== "ALL" ? Number(state.extDstSasaran) : (rels[0] ? rels[0].targetSasaran : 5);
     const dstMeta = getSasaranInfo(dstSasaranNum);
     const totalRelCount = rels.length;
 
-    // Grouping relasi per instrumen tujuan (di kanan)
     const instMap = new Map();
     for (const r of rels) {
-      const code = getInstrumentShortCode(r.source_group || r.source, r.source_instrument);
+      const code = getInstrumentShortCode(r.destId, r.destIndex);
       if (!instMap.has(code)) {
         let fullName = instName(code);
         if (code === "OP") fullName = "Opini Pengawasan";
         if (code === "IPP") fullName = "Indeks Pelayanan Publik (IPP)";
         if (code === "IKK") fullName = "Indeks Kualitas Kebijakan (IKK)";
         if (code === "ZI") fullName = "Zona Integritas (ZI)";
-
         instMap.set(code, {
-          code: code,
+          code,
           name: fullName,
-          sasaran: r.source_sasaran,
-          sasaranName: `Sasaran ${r.source_sasaran}`,
+          sasaran: r.targetSasaran,
+          sasaranName: getSasaranLabel(r.targetSasaran),
           srcIndicators: new Set(),
           dstIndicators: new Set(),
           relCount: 0
@@ -3211,70 +3225,60 @@
       }
       const item = instMap.get(code);
       item.relCount++;
-      item.srcIndicators.add(r.target); // PEMDI indicator
-      item.dstIndicators.add(r.source); // Destination indicator
+      item.srcIndicators.add(r.sourceId);
+      item.dstIndicators.add(r.destId);
     }
 
     const instList = Array.from(instMap.values());
     currentExternalInstList = instList;
-    const allPemdiIndicators = new Set(rels.map(r => r.target));
+    const allSourceIndicators = new Set(rels.map(r => r.sourceId));
 
-    // Judul & deskripsi diagram
-    if (state.extDstSasaran && state.extDstSasaran !== "ALL") {
-      dom.graphTitle.textContent = `Peta Relasi Eksternal — Sasaran 1 (Transformasi Digital) → ${dstMeta.kode} (${dstMeta.nama_singkat})`;
-      dom.colSourceTitle.textContent = `INSTRUMEN SUMBER`;
-      dom.colSourceCount.textContent = `Sasaran 1: Transformasi Digital`;
-      dom.colDestTitle.textContent = `INSTRUMEN TUJUAN`;
-      dom.colDestCount.textContent = `Sasaran ${dstSasaranNum}: ${dstMeta.nama}`;
+    if (state.extDstSasaran !== "ALL") {
+      dom.graphTitle.textContent = `Peta Relasi Eksternal — ${getSasaranLabel(srcSasaranId)} → ${getSasaranLabel(dstSasaranNum)}`;
+      dom.colDestCount.textContent = `${dstMeta.kode}: ${dstMeta.nama}`;
     } else {
-      dom.graphTitle.textContent = `Peta Relasi Eksternal — Sasaran 1 (Transformasi Digital) → Seluruh Sasaran`;
-      dom.colSourceTitle.textContent = `INSTRUMEN SUMBER`;
-      dom.colSourceCount.textContent = `Sasaran 1: Transformasi Digital`;
-      dom.colDestTitle.textContent = `INSTRUMEN TUJUAN`;
-      dom.colDestCount.textContent = `Seluruh Instrumen Sasaran 2 s.d. 5`;
+      dom.graphTitle.textContent = `Peta Relasi Eksternal — ${getSasaranLabel(srcSasaranId)} → Seluruh Sasaran`;
+      dom.colDestCount.textContent = "Seluruh Instrumen Sasaran 1 s.d. 5";
     }
-
+    dom.colSourceTitle.textContent = "INSTRUMEN SUMBER";
+    dom.colSourceCount.textContent = `${srcInfo.kode}: ${srcInfo.nama_singkat}`;
+    dom.colDestTitle.textContent = "INSTRUMEN TUJUAN";
     dom.graphDesc.textContent = `Menampilkan peta arsitektur instrumen/indeks. Klik kotak instrumen untuk langsung membuka penyandingan rincian di Tahap 3 (Daftar Relasi).`;
     dom.mapTotal.textContent = totalRelCount.toLocaleString("id-ID");
     dom.mapUnit.textContent = `relasi (${instList.length} instrumen tujuan)`;
 
-    // Render Kartu Instrumen Sumber (Kolom Kiri: PEMDI)
     dom.containerSourceCards.innerHTML = `
       <div class="relation-node-card card-source"
-           id="card_src_PEMDI"
-           data-inst="PEMDI"
+           id="card_src_${esc(srcInst)}"
+           data-inst="${esc(srcInst)}"
            style="cursor:pointer;"
            title="Klik untuk membuka seluruh rincian relasi di Tahap 3 (Daftar Relasi)">
-        <span class="node-kicker">SUMBER · PEMDI</span>
-        <span class="node-title">Pemerintah Digital (PEMDI)</span>
-        <span class="node-code">Sasaran 1 · PEMDI</span>
-        <span class="node-count">${allPemdiIndicators.size} indikator · ${totalRelCount} relasi</span>
-        <div class="connection-pin" id="pin_src_PEMDI" style="right:-9px; background:#0f766e; border:2px solid #ffffff;"></div>
+        <span class="node-kicker">SUMBER · ${esc(srcInst)}</span>
+        <span class="node-title">${esc(srcInfo.pembina)}</span>
+        <span class="node-code">${esc(srcInfo.kode)} · ${esc(srcInst)}</span>
+        <span class="node-count">${allSourceIndicators.size} indikator · ${totalRelCount} relasi</span>
+        <div class="connection-pin" id="pin_src_${esc(srcInst)}" style="right:-9px; background:#0f766e; border:2px solid #ffffff;"></div>
       </div>
     `;
 
-    // Render Kartu Instrumen Tujuan (Kolom Kanan: Instrumen Sasaran 2-5)
-    dom.containerDestCards.innerHTML = instList.map(inst => {
-      return `
-        <div class="relation-node-card card-dest"
-             id="card_dst_${esc(inst.code)}"
-             data-inst="${esc(inst.code)}"
-             style="cursor:pointer;"
-             title="Klik untuk membuka rincian penyandingan ${esc(inst.name)} di Tahap 3 (Daftar Relasi)">
-          <div class="connection-pin" id="pin_dst_${esc(inst.code)}" style="left:-9px; background:#0284c7; border:2px solid #ffffff;"></div>
-          <span class="node-kicker">TUJUAN · ${esc(inst.code)}</span>
-          <span class="node-title">${esc(inst.name)}</span>
-          <span class="node-code">Sasaran ${inst.sasaran} · ${esc(inst.code)}</span>
-          <span class="node-count">${inst.dstIndicators.size} indikator · ${inst.relCount} relasi</span>
-        </div>
-      `;
-    }).join("");
+    dom.containerDestCards.innerHTML = instList.map(inst => `
+      <div class="relation-node-card card-dest"
+           id="card_dst_${esc(inst.code)}"
+           data-inst="${esc(inst.code)}"
+           style="cursor:pointer;"
+           title="Klik untuk membuka rincian penyandingan ${esc(inst.name)} di Tahap 3 (Daftar Relasi)">
+        <div class="connection-pin" id="pin_dst_${esc(inst.code)}" style="left:-9px; background:#0284c7; border:2px solid #ffffff;"></div>
+        <span class="node-kicker">TUJUAN · ${esc(inst.code)}</span>
+        <span class="node-title">${esc(inst.name)}</span>
+        <span class="node-code">${esc(inst.sasaranName)} · ${esc(inst.code)}</span>
+        <span class="node-count">${inst.dstIndicators.size} indikator · ${inst.relCount} relasi</span>
+      </div>
+    `).join("");
 
-    // Event Klik Kartu Sumber -> Buka Seluruh Rincian di Tahap 3
-    const srcCard = dom.containerSourceCards.querySelector("#card_src_PEMDI");
+    const srcCard = dom.containerSourceCards.querySelector(`#card_src_${srcInst}`);
     if (srcCard) {
       srcCard.onclick = () => {
-        state.source = "PEMDI";
+        state.source = srcInst;
         state.component = "";
         state.dest = "";
         state.rtype = "";
@@ -3286,11 +3290,10 @@
       };
     }
 
-    // Event Klik Kartu Tujuan -> Buka Tahap 3 untuk instrumen tersebut
     dom.containerDestCards.querySelectorAll("[data-inst]").forEach(card => {
       const code = card.dataset.inst;
       card.onclick = () => {
-        state.source = "PEMDI";
+        state.source = srcInst;
         state.component = "";
         state.dest = code;
         state.rtype = "";
@@ -3304,7 +3307,6 @@
       card.onmouseleave = () => unhighlightMacroRelation();
     });
 
-    // Gambar kurva penghubung antar pin
     requestAnimationFrame(() => {
       drawExternalMacroCurves(instList);
     });
@@ -3325,18 +3327,18 @@
     // Pada Sasaran 3, default peta yang dibaca atasan adalah SATU indikator desain
     // dan pertanyaan survei terkait, bukan 33 + 72 kartu sekaligus.
     const isS3 = state.activeMenu === "internal" && Number(state.internalSasaranId) === 3;
+    const s3Default = getS3DefaultIndices();
     if (isS3 && state.s3Compact) {
-      if (state.source !== "DIIIP" && state.source !== "ALL") {
-        // Pertanyaan survei terpilih dipertahankan sesudah orientasi dibalik.
-        if (state.source === "IIIP" && state.component) state.s3SelectedSurveyQuestion = state.component;
-        state.source = "DIIIP";
+      if (state.source !== s3Default.src && state.source !== "ALL") {
+        if (state.source === s3Default.dst && state.component) state.s3SelectedSurveyQuestion = state.component;
+        state.source = s3Default.src;
         state.component = "";
-      } else if (state.source === "ALL" && state.component.startsWith("SS3-IIIP")) {
+      } else if (state.source === "ALL" && state.component.startsWith(`SS3-${s3Default.dst}`)) {
         state.s3SelectedSurveyQuestion = state.component;
         state.component = "";
       }
-      state.dest = "IIIP";
-      state.chosenInst = "IIIP";
+      state.dest = s3Default.dst;
+      state.chosenInst = s3Default.dst;
       populateFilters();
     }
     const allFiltered = filteredRelations().filter(r =>
@@ -3344,10 +3346,12 @@
     );
     let pairs = groupRelations(allFiltered);
 
-    const s3DesignOptions = isS3 ? [...new Map((relasiInternal.sasaran3?.relasi || []).map(r => [
-      r.tujuan_kode,
-      { id: r.tujuan_kode, name: r.tujuan_nama }
-    ])).values()].sort((a, b) => a.name.localeCompare(b.name, "id", { numeric: true })) : [];
+    const s3DesignOptions = isS3 ? [...new Map((getS3InternalLegacy())
+      .filter(r => r.asal_instrumen === s3Default.src)
+      .map(r => [
+        r.asal_kode,
+        { id: r.asal_kode, name: r.asal_nama }
+      ])).values()].sort((a, b) => a.name.localeCompare(b.name, "id", { numeric: true })) : [];
     if (isS3 && state.s3Compact) {
       const available = new Set(pairs.map(p => p.source));
       if (!available.has(state.s3SelectedIndicator)) {
@@ -3428,7 +3432,7 @@
     } else {
       if (dom.graphInstTabs) {
         if (isS3) {
-          const n = relasiInternal.sasaran3?.relasi?.length || 0;
+          const n = getS3InternalLegacy().length || 0;
           dom.graphInstTabs.style.display = "flex";
           dom.graphInstTabs.innerHTML = `
             <div class="s3-layout-controls">
@@ -3438,8 +3442,8 @@
               </div>
               ${state.s3Compact ? `
                 <label class="s3-select-wrap" for="s3DesignSelector">
-                  <span>Indikator Desain IIIP</span>
-                  <select id="s3DesignSelector" class="select-input" aria-label="Pilih indikator desain IIIP">
+                  <span>Indikator Desain</span>
+                  <select id="s3DesignSelector" class="select-input" aria-label="Pilih indikator desain">
                     ${s3DesignOptions.map(opt => `<option value="${esc(opt.id)}" ${opt.id === state.s3SelectedIndicator ? 'selected' : ''}>${esc(opt.name)}</option>`).join("")}
                   </select>
                 </label>` : '<span class="s3-view-caption">Klik kartu untuk menyorot hubungan tertentu.</span>'}
@@ -3454,9 +3458,9 @@
               state.s3GraphPickedIndicator = false;
               state.search = "";
               // Tampilan semua juga menggunakan orientasi desain→pertanyaan, lebih mudah dibaca.
-              if (state.source !== "DIIIP" && state.source !== "ALL") state.source = "DIIIP";
-              state.dest = "IIIP";
-              state.chosenInst = "IIIP";
+              if (state.source !== s3Default.src && state.source !== "ALL") state.source = s3Default.src;
+              state.dest = s3Default.dst;
+              state.chosenInst = s3Default.dst;
               populateFilters();
               renderStageGraph();
             };
@@ -3544,11 +3548,13 @@
     if (state.activeMenu === "external") {
       const srcSasaranNum = state.extSrcSasaran || (pairs[0] ? pairs[0].sourceSasaran : 2);
       const srcMeta = getSasaranInfo(srcSasaranNum);
+      const dstNum = state.extDstSasaran !== "ALL" ? Number(state.extDstSasaran) : (pairs[0] ? pairs[0].targetSasaran : null);
+      const dstLabel = dstNum ? getSasaranLabel(dstNum) : "Seluruh Sasaran";
       if (state.chosenSrc) {
         const activeSrcObj = srcMap.get(state.chosenSrc);
-        dom.graphTitle.textContent = `${activeSrcObj ? activeSrcObj.name : state.chosenSrc} × Pemerintah Digital`;
+        dom.graphTitle.textContent = `${activeSrcObj ? activeSrcObj.name : state.chosenSrc} → ${dstLabel}`;
       } else {
-        dom.graphTitle.textContent = `${srcMeta.kode} (${srcMeta.nama_singkat}) → Sasaran 1 (Pemerintah Digital)`;
+        dom.graphTitle.textContent = `${srcMeta.kode} (${srcMeta.nama_singkat}) → ${dstLabel}`;
       }
       const filterNote = (state.extInstFilter && state.extInstFilter !== "ALL")
         ? `[Filter Indeks: ${instName(state.extInstFilter)}] `
@@ -3573,18 +3579,18 @@
     const dstInstLabel = state.chosenInst || (activePairs[0] ? activePairs[0].destInst : "Pembanding");
 
     dom.colSourceTitle.textContent = isS3
-      ? (srcInstLabel === "DIIIP" ? "Indikator Desain IIIP" : "Pertanyaan Survei IIIP")
+      ? (srcInstLabel === s3Default.src ? "Indikator Desain" : "Pertanyaan Survei")
       : `Indeks / Indikator Sumber (${esc(instName(srcInstLabel))})`;
-    dom.colSourceCount.textContent = `${sourceList.length} ${isS3 && srcInstLabel === "IIIP" ? "Pertanyaan" : "Indikator"}`;
+    dom.colSourceCount.textContent = `${sourceList.length} ${isS3 && srcInstLabel === s3Default.dst ? "Pertanyaan" : "Indikator"}`;
 
     dom.colDestTitle.textContent = isS3
-      ? (dstInstLabel === "IIIP" ? "Pertanyaan Survei IIIP yang Berelasi" : "Indikator Desain IIIP")
+      ? (dstInstLabel === s3Default.dst ? "Pertanyaan Survei yang Berelasi" : "Indikator Desain")
       : `Indeks / Indikator Pembanding (${esc(instName(dstInstLabel))})`;
-    dom.colDestCount.textContent = `${destList.length} ${isS3 && dstInstLabel === "IIIP" ? "Pertanyaan" : "Indikator"}`;
+    dom.colDestCount.textContent = `${destList.length} ${isS3 && dstInstLabel === s3Default.dst ? "Pertanyaan" : "Indikator"}`;
 
     if (isS3 && state.s3Compact) {
       dom.graphTitle.textContent = "Peta Relasi Sasaran 3 — Ringkas per Indikator";
-      dom.graphDesc.textContent = `Menampilkan ${totalRelationsCount} pertanyaan survei terkait satu indikator desain. Garis biru penghubung langsung terlihat dan dapat disorot. Total basis data ${relasiInternal.sasaran3?.relasi?.length || 0} relasi.`;
+      dom.graphDesc.textContent = `Menampilkan ${totalRelationsCount} pertanyaan survei terkait satu indikator desain. Garis biru penghubung langsung terlihat dan dapat disorot. Total basis data ${getS3InternalLegacy().length || 0} relasi.`;
       dom.mapUnit.textContent = "pertanyaan terkait";
     }
 
@@ -3603,7 +3609,7 @@
           ? "border: 2px solid #0284c7; background: #f0f9ff; box-shadow: 0 4px 10px rgba(2,132,199,0.18);"
           : "border-left: 4px solid var(--blue-primary);";
 
-        const sourceTag = isS3 ? (src.inst === "IIIP" ? "Pertanyaan Survei IIIP" : "Indikator Desain IIIP") : instName(src.inst || state.source);
+        const sourceTag = isS3 ? (src.inst === s3Default.dst ? "Pertanyaan Survei" : "Indikator Desain") : instName(src.inst || state.source);
         return `
           <div class="diagram-card card-source" id="card_src_${esc(src.id)}" data-srcgroup="${esc(src.id)}" style="${activeStyle}" title="Arahkan kursor untuk menyorot relasi, atau klik untuk memfokuskan hubungan ini">
             <div class="card-top-meta">
@@ -3650,14 +3656,14 @@
       `;
     } else {
       dom.containerDestCards.innerHTML = destList.map(dst => {
-        const dstSasaranLabel = state.activeMenu === "external" ? "Sasaran 1" : `Sasaran ${state.internalSasaranId}`;
-        const destTag = isS3 ? (dst.inst === "IIIP" ? "Pertanyaan Survei IIIP" : "Indikator Desain IIIP") : instName(dst.inst);
+        const dstSasaranLabel = `Sasaran ${dst.sasaran || (state.activeMenu === "external" ? state.extDstSasaran : state.internalSasaranId)}`;
+        const destTag = isS3 ? (dst.inst === s3Default.dst ? "Pertanyaan Survei" : "Indikator Desain") : instName(dst.inst);
         return `
           <div class="diagram-card card-dest" id="card_dst_${esc(dst.id)}" data-destgroup="${esc(dst.id)}" style="cursor:pointer; border-left: 4px solid #10b981;" title="Arahkan kursor untuk menyorot sumber, atau klik untuk melihat rincian di Tahap 3">
             <div class="connection-pin" id="pin_dst_${esc(dst.id)}"></div>
             <div class="card-top-meta">
               <span class="card-inst-tag" style="color:#059669;">${esc(destTag)} · ${dstSasaranLabel}</span>
-              <span class="card-rel-count">${dst.totalItems} ${isS3 && dst.inst === "IIIP" ? "relasi" : "rujukan kode"}</span>
+              <span class="card-rel-count">${dst.totalItems} ${isS3 && dst.inst === s3Default.dst ? "relasi" : "rujukan kode"}</span>
             </div>
             <div class="card-title" style="font-size:14px; font-weight:700; color:var(--navy-dark);">${esc(cleanLabel(dst.name))}</div>
             <div style="font-size:11px; color:#64748b; margin-top:6px;">Arahkan kursor untuk sorot · Klik rincian di Tahap 3 →</div>
@@ -4395,11 +4401,11 @@
     // Intro Notice
     if (dom.detailIntroNotice) {
       if (state.activeMenu === "external") {
-        dom.detailIntroNotice.innerHTML = `<strong>Keterangan Relasi Eksternal:</strong> Menampilkan penyandingan substansi indikator dari Sasaran 1 (Pemerintah Digital) menuju sasaran tujuan (Sasaran 2 s.d. 5). Pilih <em>Lihat Detail</em> untuk menelaah justifikasi dan komparasi substansial secara utuh.`;
+        dom.detailIntroNotice.innerHTML = `<strong>Keterangan Relasi Eksternal:</strong> Menampilkan penyandingan substansi indikator dari ${getSasaranLabel(state.extSrcSasaran)} menuju sasaran tujuan. Pilih <em>Lihat Detail</em> untuk menelaah justifikasi dan komparasi substansial secara utuh.`;
       } else if (Number(state.internalSasaranId) === 5) {
         dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 5:</strong> Menampilkan penyandingan substansi indikator antar-indeks pelayanan publik. Pilih <em>Lihat Detail</em> untuk membandingkan aspek, indikator, dan subindikator pendukung.`;
       } else if (Number(state.internalSasaranId) === 3) {
-        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 3:</strong> Menampilkan penyandingan substansi antara Instrumen Pengumpulan Data Survei IIIP dan Desain IIIP berdasarkan sheet <code>Copy of Sasaran 3</code>. Pilih <em>Lihat Detail</em> untuk menelaah rincian indikator, pertanyaan, dan justifikasi keterkaitan secara utuh.`;
+        dom.detailIntroNotice.innerHTML = `<strong>Relasi Internal Sasaran 3:</strong> Menampilkan penyandingan substansi antara ${getS3Indices().map(instName).join(" dan ")} berdasarkan sheet <code>sasaran3.js</code>. Pilih <em>Lihat Detail</em> untuk menelaah rincian indikator, pertanyaan, dan justifikasi keterkaitan secara utuh.`;
       } else if (isSasaran4()) {
         const totalDev = getS4Relations().length;
         const countText = itemsToDisplay.length < totalDev
@@ -4513,14 +4519,14 @@
         const current = (currentActivePairs || [])[0];
         dom.contextText.textContent = state.s3Compact
           ? `Indikator Desain: ${current?.sourceName || "Pilih indikator"} · ${(currentActivePairs || []).length} pertanyaan survei terkait. Klik pertanyaan untuk melihat rincian.`
-          : `Menampilkan peta lengkap 72 relasi antara indikator desain dan pertanyaan survei. Klik salah satu kartu untuk memfokuskan.`;
+          : `Menampilkan peta lengkap ${getS3InternalLegacy().length || 0} relasi antara indikator desain dan pertanyaan survei. Klik salah satu kartu untuk memfokuskan.`;
       } else {
         dom.contextText.textContent = `Sumber: ${state.chosenSrc} × Pembanding: ${instName(state.chosenInst || "PEMDI")}. Klik salah satu kartu tujuan untuk melihat daftar rincian.`;
       }
     } else {
       dom.contextTag.textContent = "Tahap 3: Daftar Relasi";
       if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 3 && state.chosenDest) {
-        dom.contextText.textContent = "Menampilkan rincian hubungan indikator desain IIIP dengan pertanyaan survei terkait.";
+        dom.contextText.textContent = "Menampilkan rincian hubungan indikator desain dengan pertanyaan survei terkait.";
       } else {
         dom.contextText.textContent = state.chosenDest
           ? `Menampilkan rincian hubungan ${state.chosenSrc} → ${state.chosenDest}.`
@@ -4542,9 +4548,10 @@
     if (stage === "matrix") {
       if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 3 &&
         previousStage !== "matrix" && state.s3GraphPickedIndicator && state.s3SelectedIndicator) {
-        if (state.source !== "ALL") state.source = "DIIIP";
+        const s3Default = getS3DefaultIndices();
+        if (state.source !== "ALL") state.source = s3Default.src;
         state.component = state.s3SelectedIndicator;
-        state.dest = "IIIP";
+        state.dest = s3Default.dst;
         state.s3GraphPickedIndicator = false;
         populateFilters();
       }
@@ -4560,7 +4567,7 @@
         state.extSrcSasaran = 1;
         state.extDstSasaran = "ALL";
         state.extInstFilter = "ALL";
-        state.source = "PEMDI";
+        state.source = getExternalSourceInst();
         state.dest = "";
         if (dom.selectExtSourceSasaran) {
           dom.selectExtSourceSasaran.value = "1";
@@ -4631,15 +4638,15 @@
         return;
       }
       const sId = Number(state.internalSasaranId);
-      if (sId === 5) {
-        dom.topbarSummaryText.textContent = "Sasaran 5: 49 Pasangan Indikator (IPP)";
-      } else if (sId === 3) {
-        dom.topbarSummaryText.textContent = "Sasaran 3: 72 Relasi (IIIP)";
+      const count = getSasaranRelations(sId, "internal").length;
+      if (count) {
+        dom.topbarSummaryText.textContent = `Sasaran ${sId}: ${count.toLocaleString("id-ID")} Relasi Internal`;
       } else {
-        dom.topbarSummaryText.textContent = "Sasaran " + sId;
+        dom.topbarSummaryText.textContent = `Sasaran ${sId}: Tanpa Relasi Internal`;
       }
     } else {
-      dom.topbarSummaryText.textContent = "Sasaran 1: 1.631 Pasangan Relasi (PEMDI)";
+      const count = getSasaranRelations(state.extSrcSasaran, "external").length;
+      dom.topbarSummaryText.textContent = `Sasaran ${state.extSrcSasaran}: ${count.toLocaleString("id-ID")} Relasi Eksternal`;
     }
   }
 
@@ -4651,9 +4658,9 @@
       dom.bcScope.textContent = isSasaran4() ? "Sasaran 4" : `Sasaran ${state.internalSasaranId}`;
     } else {
       if (state.activeStage !== "matrix" && state.extDstSasaran && state.extDstSasaran !== "ALL") {
-        dom.bcScope.textContent = `Sasaran 1 → Sasaran ${state.extDstSasaran}`;
+        dom.bcScope.textContent = `Sasaran ${state.extSrcSasaran} → Sasaran ${state.extDstSasaran}`;
       } else {
-        dom.bcScope.textContent = "Sasaran 1 s.d. 5";
+        dom.bcScope.textContent = `Sasaran ${state.extSrcSasaran} s.d. 5`;
       }
     }
 
@@ -4694,7 +4701,7 @@
         state.devMatrixMode = "antarindeks";
         state.devOpenGroup = "";
       } else {
-        state.source = Number(state.internalSasaranId) === 5 ? "IPP" : "IIIP";
+        state.source = getDefaultInternalSource(state.internalSasaranId);
       }
     } else {
       dom.menuInternal.classList.remove("active");
@@ -4704,13 +4711,13 @@
       if (dom.groupExtDestSasaranSelect) dom.groupExtDestSasaranSelect.classList.remove("hidden");
       if (dom.sasaran3NoticeBox) dom.sasaran3NoticeBox.classList.add("hidden");
       if (dom.sidebarScopeTitle) dom.sidebarScopeTitle.textContent = "Relasi Eksternal";
-      if (dom.sidebarScopeDesc) dom.sidebarScopeDesc.textContent = "Memetakan hubungan keterkaitan indikator antar-sasaran strategis RB (Sasaran 1 menuju Sasaran 2, 3, 4, dan 5).";
+      if (dom.sidebarScopeDesc) dom.sidebarScopeDesc.textContent = "Memetakan hubungan keterkaitan indikator antar-sasaran strategis RB dari kelima tab sasaran.js.";
       state.extDirection = "ALL";
       state.extSrcSasaran = 1;
       state.extDstSasaran = "ALL";
       if (dom.selectExtSourceSasaran) dom.selectExtSourceSasaran.value = "1";
       if (dom.selectExtDestSasaran) dom.selectExtDestSasaran.value = "ALL";
-      state.source = "PEMDI";
+      state.source = getExternalSourceInst();
       state.dest = "";
     }
 
@@ -4840,7 +4847,7 @@
       SM: "Sistem Merit",
       DIIIP: "Desain Indeks Inovasi Instansi Pemerintah (IIIP)",
       IIIP: "Instrumen Pengumpulan Data Survei Indeks Inovasi Instansi Pemerintah (IIIP)",
-      SPI: "Survei Penilaian Integritas (Historis Nonaktif)",
+      SPI: "Survei Penilaian Integritas (SPI)",
       KK: "Kapabilitas Kelembagaan",
       IPPN: "Indeks Perencanaan Pembangunan Nasional",
       SAKIP: "Sistem Akuntabilitas Kinerja Instansi Pemerintah",
@@ -5006,9 +5013,9 @@
         : `LAPORAN MATRIKS RELASI INTERNAL — SASARAN ${state.internalSasaranId}`);
 
     const subtitle = isExternal
-      ? "Orientasi: Sasaran 1 (Transformasi Digital - PEMDI) menuju Sasaran Tujuan 2, 3, 4, dan 5"
+      ? `Orientasi: ${getSasaranLabel(state.extSrcSasaran)} menuju Seluruh Sasaran Tujuan`
       : (Number(state.internalSasaranId) === 3
-        ? "Matriks Keterkaitan Instrumen Sasaran 3: Integritas & Inovasi (Bahan paparan Kamis (30092026) (1).xlsx)"
+        ? "Matriks Keterkaitan Instrumen Sasaran 3: Integritas & Inovasi (sasaran3.js)"
         : (isSasaran4()
           ? "Matriks Keterkaitan Antarindeks pada 3 Kelompok Sasaran 4 (Kapabilitas Kelembagaan)"
           : `Relasi Kebijakan Internal pada Sasaran ${state.internalSasaranId}`));
@@ -5151,12 +5158,17 @@
         doc.setTextColor(15, 23, 42);
         doc.text("Rincian Distribusi Instrumen per Sasaran Tujuan:", leftMargin, finalY + 36);
 
-        const breakdownData = [
-          ["Sasaran 2 (Sistem Merit)", "17 Relasi", "Sistem Merit (SM: 17)"],
-          ["Sasaran 3 (Integritas & Inovasi)", "120 Relasi", "IIIP (92), DIIIP (28)"],
-          ["Sasaran 4 (Kapabilitas Kelembagaan)", "76 Relasi", "ELPPD (2), IPPN (24), KK (26), SAKIP (24)"],
-          ["Sasaran 5 (Pelayanan Publik)", "1.418 Relasi", "IKK (24), IPP (818), OP (490), ZI (86)"]
-        ];
+        const externalRels = [1, 2, 3, 4, 5].flatMap(id => getSasaranRelations(id, "external"));
+        const breakdownData = [1, 2, 3, 4, 5].map(id => {
+          const targetRels = externalRels.filter(r => r.targetSasaran === id);
+          const byInst = new Map();
+          for (const r of targetRels) {
+            const inst = getInstrumentShortCode(r.destId, r.destIndex);
+            byInst.set(inst, (byInst.get(inst) || 0) + 1);
+          }
+          const detail = [...byInst.entries()].map(([inst, count]) => `${inst} (${count})`).join(", ") || "-";
+          return [getSasaranLabel(id), `${targetRels.length.toLocaleString("id-ID")} Relasi`, detail];
+        }).filter(row => !row[1].startsWith("0 "));
 
         doc.autoTable({
           startY: finalY + 46,
@@ -5389,7 +5401,7 @@
       const pathsHtml = [];
 
       if (isExternal) {
-        const pinSrc = pinMap.get("pin_src_PEMDI");
+        const pinSrc = pinMap.get(`pin_src_${getExternalSourceInst()}`);
         const listToRender = currentExternalInstList || [];
         listToRender.forEach((inst) => {
           const pinDst = pinMap.get(`pin_dst_${inst.code}`);
@@ -5607,8 +5619,9 @@
     let dstCode = state.dest || (state.extDstSasaran && state.extDstSasaran !== "ALL" ? `Sasaran${state.extDstSasaran}` : "Semua");
 
     if (!isExternal) {
-      srcCode = state.source || (Number(state.internalSasaranId) === 3 ? "IIIP" : "KK");
-      dstCode = state.chosenInst || state.dest || (Number(state.internalSasaranId) === 3 ? "DIIIP" : "IndeksPembanding");
+      const s3Default = getS3DefaultIndices();
+      srcCode = state.source || (Number(state.internalSasaranId) === 3 ? s3Default.src : "KK");
+      dstCode = state.chosenInst || state.dest || (Number(state.internalSasaranId) === 3 ? s3Default.dst : "IndeksPembanding");
     }
 
     const srcFullName = getFullInstrumentName(srcCode);
@@ -5680,7 +5693,7 @@
       const srcTitle = r.sourceIndikator || r.sourceName || "";
       const srcAspek = r.sourceAspek ? `Aspek: ${r.sourceAspek}\n` : "";
       const srcInst = r.sourceInstName || (r.sourceInst ? instName(r.sourceInst) : (r.source || ""));
-      const srcSas = r.sourceSasaranName || (isExternal ? "Sasaran 1 - Transformasi Digital" : `Sasaran ${state.internalSasaranId}`);
+      const srcSas = r.sourceSasaranName || (isExternal ? getSasaranLabel(state.extSrcSasaran) : `Sasaran ${state.internalSasaranId}`);
 
       const dstCodeStr = r.destCode ? `[Kode: ${r.destCode}]\n` : "";
       const dstTitle = r.destIndikator || r.destName || "";
@@ -5838,7 +5851,7 @@
           state.devMatrixMode = "antarindeks";
           state.devOpenGroup = "";
         } else {
-          state.source = state.internalSasaranId === 5 ? "IPP" : "IIIP";
+          state.source = getDefaultInternalSource(state.internalSasaranId);
         }
         state.component = "";
         state.dest = "";
@@ -5857,10 +5870,20 @@
 
     // Dropdown Sasaran Sumber Eksternal
     if (dom.selectExtSourceSasaran) {
-      dom.selectExtSourceSasaran.onchange = () => {
-        state.extSrcSasaran = 1;
-        state.source = "PEMDI";
+      dom.selectExtSourceSasaran.onchange = e => {
+        state.extSrcSasaran = Number(e.target.value) || 1;
+        state.extDirection = state.extDstSasaran === "ALL" ? "ALL" : `${state.extSrcSasaran}_${state.extDstSasaran}`;
+        state.source = getExternalSourceInst();
+        state.dest = "";
+        state.component = "";
+        state.chosenInst = "";
+        state.chosenSrc = "";
+        state.chosenDest = "";
+        state.focusRelation = null;
         populateFilters();
+        if (state.activeStage === "graph") renderStageGraphExternal();
+        else if (state.activeStage === "list") renderStageList();
+        else renderStageMatrix();
       };
     }
 
@@ -5872,9 +5895,9 @@
         if (state.extDstSasaran === "ALL") {
           state.extDirection = "ALL";
         } else {
-          state.extDirection = `1_${state.extDstSasaran}`;
+          state.extDirection = `${state.extSrcSasaran}_${state.extDstSasaran}`;
         }
-        state.source = "PEMDI";
+        state.source = getExternalSourceInst();
         state.dest = "";
         state.component = "";
         state.chosenSrc = "";
@@ -5943,8 +5966,9 @@
     dom.selectComponent.onchange = e => {
       state.component = e.target.value;
       if (state.activeMenu === "internal" && Number(state.internalSasaranId) === 3) {
-        if (state.source === "DIIIP" ||
-          (state.source === "ALL" && state.component.startsWith("SS3-DIIIP"))) {
+        const s3Default = getS3DefaultIndices();
+        if (state.source === s3Default.src ||
+          (state.source === "ALL" && state.component.startsWith(`SS3-${s3Default.src}`))) {
           state.s3SelectedIndicator = state.component;
           state.s3GraphPickedIndicator = false;
           state.s3SelectedSurveyQuestion = "";
@@ -5991,7 +6015,7 @@
         state.extDirection = "ALL";
         state.extSrcSasaran = 1;
         state.extDstSasaran = "ALL";
-        state.source = "PEMDI";
+        state.source = getExternalSourceInst();
         state.dest = "";
         if (dom.selectExtSourceSasaran) dom.selectExtSourceSasaran.value = "1";
         if (dom.selectExtDestSasaran) dom.selectExtDestSasaran.value = "ALL";
@@ -6002,7 +6026,7 @@
         state.devMatrixMode = "antarindeks";
         state.devOpenGroup = "";
       } else {
-        state.source = state.internalSasaranId === 5 ? "IPP" : "IIIP";
+        state.source = getDefaultInternalSource(state.internalSasaranId);
       }
       dom.inputSearchFree.value = "";
       populateFilters();
@@ -6023,7 +6047,7 @@
           state.extDirection = "ALL";
           state.extSrcSasaran = 1;
           state.extDstSasaran = "ALL";
-          state.source = "PEMDI";
+          state.source = getExternalSourceInst();
           state.dest = "";
           if (dom.selectExtSourceSasaran) dom.selectExtSourceSasaran.value = "1";
           if (dom.selectExtDestSasaran) dom.selectExtDestSasaran.value = "ALL";
@@ -6034,7 +6058,7 @@
           state.devMatrixMode = "antarindeks";
           state.devOpenGroup = "";
         } else {
-          state.source = state.internalSasaranId === 5 ? "IPP" : "IIIP";
+          state.source = getDefaultInternalSource(state.internalSasaranId);
         }
         dom.inputSearchFree.value = "";
         populateFilters();
@@ -6199,6 +6223,8 @@
 
   // 15. Sinkronisasi Otomatis Google Sheets untuk Seluruh Sasaran (1 s.d. 5)
   const syncStateMap = {
+    s1: { lastHash: "", status: null, name: "Sasaran 1" },
+    s2: { lastHash: "", status: null, name: "Sasaran 2" },
     s3: { lastHash: "", status: null, name: "Sasaran 3" },
     s4: { lastHash: "", status: null, name: "Sasaran 4" },
     s5: { lastHash: "", status: null, name: "Sasaran 5" },
@@ -6207,21 +6233,32 @@
   let activeSyncIntervalId = null;
   const syncInProgress = new Set();
 
+  function getSyncTarget(key) {
+    if (key === "ext") {
+      const sId = Number(state.extSrcSasaran);
+      return {
+        key: "ext",
+        name: `Relasi Eksternal Sasaran ${sId}`,
+        endpoint: `/api/sasaran${sId}?scope=external`,
+        fallback: `/.netlify/functions/get-sasaran?sasaran=${sId}&scope=external`,
+        sasaranId: sId,
+        scope: "external"
+      };
+    }
+    const sId = Number(String(key || "").replace(/^s/, "")) || Number(state.internalSasaranId);
+    return {
+      key: `s${sId}`,
+      name: `Sasaran ${sId}`,
+      endpoint: `/api/sasaran${sId}?scope=internal`,
+      fallback: `/.netlify/functions/get-sasaran?sasaran=${sId}&scope=internal`,
+      sasaranId: sId,
+      scope: "internal"
+    };
+  }
+
   function getCurrentSyncTarget() {
-    if (state.activeMenu === "external") {
-      return { key: "ext", name: "Relasi Eksternal", endpoint: "/api/external", fallback: "/.netlify/functions/get-external" };
-    }
-    if (isSasaran4()) {
-      return { key: "s4", name: "Sasaran 4", endpoint: "/api/sasaran4", fallback: "/.netlify/functions/get-sasaran4" };
-    }
-    const sId = Number(state.internalSasaranId);
-    if (sId === 3) {
-      return { key: "s3", name: "Sasaran 3", endpoint: "/api/sasaran3", fallback: "/.netlify/functions/get-sasaran3" };
-    }
-    if (sId === 5) {
-      return { key: "s5", name: "Sasaran 5", endpoint: "/api/sasaran5", fallback: "/.netlify/functions/get-sasaran5" };
-    }
-    return { key: `s${sId}`, name: `Sasaran ${sId}`, endpoint: `/api/sasaran${sId}`, fallback: `/.netlify/functions/get-sasaran${sId}` };
+    if (state.activeMenu === "external") return getSyncTarget("ext");
+    return getSyncTarget(isSasaran4() ? "s4" : `s${Number(state.internalSasaranId)}`);
   }
 
   function updateSyncBadgeDisplay() {
@@ -6267,18 +6304,11 @@
   }
 
   async function syncActiveSasaran(targetKey = null, silent = false) {
-    const target = targetKey ? { key: targetKey, ...syncStateMap[targetKey] } : getCurrentSyncTarget();
+    const target = targetKey ? getSyncTarget(targetKey) : getCurrentSyncTarget();
     if (!target || syncInProgress.has(target.key)) return;
 
-    // Resolve endpoint
-    let endpoint = target.endpoint;
-    let fallback = target.fallback;
-    if (!endpoint) {
-      if (target.key === "s3") { endpoint = "/api/sasaran3"; fallback = "/.netlify/functions/get-sasaran3"; }
-      else if (target.key === "s4") { endpoint = "/api/sasaran4"; fallback = "/.netlify/functions/get-sasaran4"; }
-      else if (target.key === "s5") { endpoint = "/api/sasaran5"; fallback = "/.netlify/functions/get-sasaran5"; }
-      else if (target.key === "ext") { endpoint = "/api/external"; fallback = "/.netlify/functions/get-external"; }
-    }
+    const endpoint = target.endpoint;
+    const fallback = target.fallback;
 
     syncInProgress.add(target.key);
     if (!silent) {
@@ -6324,40 +6354,24 @@
           syncStateMap[target.key].lastHash = newHash;
         }
 
-        // Terapkan data ke model in-memory berdasarkan sasaran
-        if (target.key === "s3" && Array.isArray(payload.relations)) {
-          if (relasiInternal) {
-            relasiInternal.sasaran3 = {
-              relasi: payload.relations,
-              placeholders: payload.placeholders || []
-            };
-          }
-          if (window.RB_RELASI_INTERNAL) {
-            window.RB_RELASI_INTERNAL.sasaran3 = relasiInternal.sasaran3;
-          }
-        } else if (target.key === "s4" && Array.isArray(payload.relations)) {
-          window.RB_SASARAN4_DEV = payload;
-        } else if (target.key === "s5" && Array.isArray(payload.relations)) {
-          if (relasiInternal) {
-            relasiInternal.sasaran5 = payload.relations;
-          }
-          if (window.RB_RELASI_INTERNAL) {
-            window.RB_RELASI_INTERNAL.sasaran5 = payload.relations;
-          }
-        } else if (target.key === "ext" && Array.isArray(payload.relations)) {
-          if (window.RB_EXTERNAL_LATEST) {
-            window.RB_EXTERNAL_LATEST.relations = payload.relations;
-            if (payload.catalog) window.RB_EXTERNAL_LATEST.catalog = payload.catalog;
-          }
+        if (payload.data) {
+          if (!sasaranRelations[target.sasaranId]) sasaranRelations[target.sasaranId] = { internal: [], external: [] };
+          sasaranRelations[target.sasaranId].internal = payload.data.internal || [];
+          sasaranRelations[target.sasaranId].external = payload.data.external || [];
+        } else if (Array.isArray(payload.relations)) {
+          if (!sasaranRelations[target.sasaranId]) sasaranRelations[target.sasaranId] = { internal: [], external: [] };
+          sasaranRelations[target.sasaranId][target.scope] = payload.relations;
         }
+        window.RB_SASARAN_RELATIONS = sasaranRelations;
 
-        // Render ulang tampilan jika sedang aktif membuka target tersebut
         const currentActive = getCurrentSyncTarget();
-        if (currentActive.key === target.key) {
+        if (currentActive.key === target.key && (currentActive.sasaranId === target.sasaranId || currentActive.scope === target.scope)) {
           populateFilters();
           if (state.activeStage === "matrix") renderStageMatrix();
-          else if (state.activeStage === "graph") renderStageGraph();
-          else if (state.activeStage === "list") renderStageList();
+          else if (state.activeStage === "graph") {
+            if (state.activeMenu === "external") renderStageGraphExternal();
+            else renderStageGraph();
+          } else if (state.activeStage === "list") renderStageList();
         }
       }
 
@@ -6393,13 +6407,10 @@
   const syncSasaran4FromAPI = (silent = false) => syncActiveSasaran("s4", silent);
 
   function initUniversalAutoSync() {
-    // Sinkronkan target aktif pertama kali (Sasaran 5)
     syncActiveSasaran(null, false);
-
-    // Sinkronkan sasaran lainnya di latar belakang secara bertahap
-    setTimeout(() => syncActiveSasaran("s4", true), 2000);
-    setTimeout(() => syncActiveSasaran("s3", true), 4000);
-    setTimeout(() => syncActiveSasaran("ext", true), 6000);
+    [1, 2, 3, 4, 5].forEach((id, index) => {
+      setTimeout(() => syncActiveSasaran(`s${id}`, true), (index + 1) * 1500);
+    });
 
     if (activeSyncIntervalId) clearInterval(activeSyncIntervalId);
     activeSyncIntervalId = setInterval(() => {
