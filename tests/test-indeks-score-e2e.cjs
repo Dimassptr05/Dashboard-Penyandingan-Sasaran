@@ -27,7 +27,7 @@ const { pathToFileURL } = require("node:url");
     assert.ok(badgeText.length > 5, "Badge sumber data harus tampil");
     const kpiVals = await frame.locator("#kpis .kpi-value").allTextContents();
     assert.equal(kpiVals[0].trim(), "642", `KPI cakupan evaluasi harus 642, dapat: ${kpiVals[0]}`);
-    assert.equal(kpiVals[1].trim(), "26", `KPI jumlah indikator harus 26, dapat: ${kpiVals[1]}`);
+    assert.equal(kpiVals[1].trim(), "26 / 26", `KPI jumlah indikator harus 26 / 26, dapat: ${kpiVals[1]}`);
 
     // 3. Tab 01: Uji ketik pencarian Instansi, filter kategori, urutan, detail, sorting nilai, pagination, CSV
     const instSearch = frame.locator('#panelInst .searchable-input');
@@ -38,15 +38,17 @@ const { pathToFileURL } = require("node:url");
     await frame.locator('#panelInst .searchable-clear').click();
 
     await frame.locator("#selectInstType").selectOption("Kementerian");
-    assert.equal(await frame.locator("#instTable tr").count(), 49, "Filter Kementerian harus 49 instansi");
+    assert.equal(await frame.locator("#instTable tr").count(), 20, "Halaman pertama filter Kementerian harus 20 baris (paginated)");
+    assert.ok((await frame.locator("#instPagination").textContent()).includes("49 instansi"), "Filter Kementerian harus mencakup 49 instansi");
 
     await frame.locator("#selectInstType").selectOption("Provinsi");
-    assert.equal(await frame.locator("#instTable tr").count(), 38, "Filter Provinsi harus 38 instansi");
+    assert.ok((await frame.locator("#instPagination").textContent()).includes("38 instansi"), "Filter Provinsi harus mencakup 38 instansi");
 
     await frame.locator("#filterStatus").selectOption("high");
     await frame.locator("#instTable tr button.btn").first().click();
     const detailRows = await frame.locator("#detailTable tr").count();
-    assert.equal(detailRows, 26, "Detail instansi harus menampilkan 26 indikator");
+    assert.ok(detailRows > 0 && detailRows <= 26, `Detail instansi harus menampilkan 1-26 indikator tersedia, dapat: ${detailRows}`);
+    assert.ok((await frame.locator("#detailSub").textContent()).includes("tersedia"), "Subjudul detail harus menyebut indikator tersedia");
 
     await frame.locator("#detailSortButton").click();
     assert.ok((await frame.locator("#detailSortArrow").textContent()).includes("↑"), "Sort nilai detail harus berubah ke ascending");
@@ -64,7 +66,10 @@ const { pathToFileURL } = require("node:url");
     const provCount = await frame.locator("#selectIndProvince option").count();
     const regCount = await frame.locator("#selectIndRegency option").count();
     assert.equal(provCount, 39, `Dropdown provinsi harus 38 + 1 semua, dapat ${provCount}`);
-    assert.equal(regCount, 509, `Dropdown kab/kota harus 508 + 1 semua, dapat ${regCount}`);
+    assert.equal(regCount, 1, `Dropdown kab/kota sebelum provinsi dipilih hanya placeholder, dapat ${regCount}`);
+    await frame.locator("#selectIndProvince").selectOption({ index: 1 });
+    assert.ok(await frame.locator("#selectIndRegency option").count() > 1, "Dropdown kab/kota harus terisi setelah provinsi dipilih");
+    await frame.locator("#selectIndProvince").selectOption("all");
 
     const indSearch = frame.locator('#panelInd .searchable-input');
     await indSearch.click();
@@ -98,7 +103,7 @@ const { pathToFileURL } = require("node:url");
     assert.equal(pageErrors.length, 0, `Ditemukan JS error: ${pageErrors.join(" | ")}`);
     console.log(JSON.stringify({
       status: "PASS",
-      indeksScore: { instansi: 642, indicators: 20, csvLines, provinces: provCount - 1, regencies: regCount - 1, badge: badgeText },
+      indeksScore: { instansi: 642, indicators: 26, csvLines, provinces: provCount - 1, badge: badgeText },
       sasaran4Relations: 494,
       regressions: ["Sasaran 4", "Sasaran 5", "Sasaran 3", "Relasi Eksternal"],
       jsErrors: pageErrors.length

@@ -978,3 +978,89 @@ main {
   color: var(--muted);
   text-align: center;
 }
+
+/* ---------- Parity backup3: ringkasan filter, profil tipe, tabel lebar ---------- */
+.grid2.single {
+  grid-template-columns: 1fr;
+}
+
+.filter-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.filter-summary:empty {
+  display: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.chip strong {
+  color: var(--blue-ink, #0369a1);
+}
+
+.barrow {
+  grid-template-columns: minmax(140px, 1.3fr) minmax(120px, 2fr) auto;
+}
+
+.bar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.good-text,
+.bad-text,
+.na-text {
+  display: block;
+}
+
+.good-text {
+  color: var(--green-ink);
+}
+
+.bad-text {
+  color: var(--red-ink);
+}
+
+.na-text {
+  color: var(--muted);
+}
+
+.table .total-row td {
+  border-top: 2px solid var(--line-strong);
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.wide-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--white);
+  box-shadow: 1px 0 0 var(--line);
+}
+
+.wide-table th.sticky-col {
+  z-index: 3;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f7fc 100%);
+}
