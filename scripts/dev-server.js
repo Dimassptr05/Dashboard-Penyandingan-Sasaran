@@ -50,8 +50,10 @@ const MIME_TYPES = {
 // 3. Import Netlify Function handlers
 let sasaranHandler = null;
 let indeksScoreHandler = null;
+let pemetaanInstansiHandler = null;
 try { sasaranHandler = require("../netlify/functions/get-sasaran.js").handler; } catch (e) {}
 try { indeksScoreHandler = require("../netlify/functions/get-indeks-score.js").handler; } catch (e) {}
+try { pemetaanInstansiHandler = require("../netlify/functions/get-pemetaan-instansi.js").handler; } catch (e) {}
 
 // 4. Server HTTP Utama
 const server = http.createServer(async (req, res) => {
@@ -64,6 +66,8 @@ const server = http.createServer(async (req, res) => {
     apiHandler = sasaranHandler;
   } else if (pathname === "/api/indeks-score" || pathname === "/.netlify/functions/get-indeks-score") {
     apiHandler = indeksScoreHandler;
+  } else if (pathname === "/api/pemetaan-instansi" || pathname === "/.netlify/functions/get-pemetaan-instansi") {
+    apiHandler = pemetaanInstansiHandler;
   }
 
   if (apiHandler) {

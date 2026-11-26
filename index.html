@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=20261118_v496">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261126_pemetaan">
 </head>
 
 <body>
@@ -50,6 +50,10 @@
         <button class="nav-btn" id="menuAnalysisScore" type="button">
           <span class="nav-icon">▤</span>
           <span class="nav-text">Analisis Indeks Score</span>
+        </button>
+        <button class="nav-btn" id="menuPemetaanInstansi" type="button">
+          <span class="nav-icon">⊞</span>
+          <span class="nav-text">Pemetaan Per Instansi</span>
         </button>
       </nav>
     </aside>
@@ -559,6 +563,22 @@
       </nav>
         <iframe title="Analisis Indeks Score" data-src="assets/analisis-indeks-score.html?v=20261124_parity"></iframe>
     </main>
+    <main class="main-content analysis-score-view" id="pemetaanInstansiView" hidden>
+      <nav class="analysis-score-toolbar" aria-label="Breadcrumb">
+        <button class="sidebar-toggle" id="btnPemetaanSidebarToggle" type="button" aria-controls="primarySidebar"
+          aria-expanded="true" aria-label="Sembunyikan navigasi" title="Sembunyikan navigasi">
+          <span aria-hidden="true">☰</span>
+        </button>
+        <div class="breadcrumbs">
+          <span class="bc-item">Portal RB</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item">RB Tematik</span>
+          <span class="bc-sep">›</span>
+          <span class="bc-item active">Pemetaan Per Instansi</span>
+        </div>
+      </nav>
+      <iframe title="Pemetaan Per Instansi" data-src="assets/pemetaan-per-instansi.html?v=20261126_v1"></iframe>
+    </main>
   </div>
 
   <!-- ======================================================== -->
@@ -636,39 +656,57 @@
       const analysisView = document.getElementById("analysisScoreView");
       const analysisMenu = document.getElementById("menuAnalysisScore");
       const analysisFrame = document.querySelector("#analysisScoreView iframe");
+      const pemetaanView = document.getElementById("pemetaanInstansiView");
+      const pemetaanMenu = document.getElementById("menuPemetaanInstansi");
+      const pemetaanFrame = document.querySelector("#pemetaanInstansiView iframe");
       const sidebarToggle = document.getElementById("btnSidebarToggle");
       const analysisSidebarToggle = document.getElementById("btnAnalysisSidebarToggle");
+      const pemetaanSidebarToggle = document.getElementById("btnPemetaanSidebarToggle");
       const pairingToggle = document.getElementById("menuPairingToggle");
       const pairingSubmenu = document.getElementById("pairingSubmenu");
       const relationMenus = ["menuInternal", "menuExternal"].map(id => document.getElementById(id));
 
-      function showAnalysis(visible) {
-        layout.classList.toggle("analysis-mode", visible);
-        analysisView.hidden = !visible;
-        analysisMenu.classList.toggle("active", visible);
-        if (visible) {
+      function activateView(mode) {
+        const isAnalysis = mode === "analysis";
+        const isPemetaan = mode === "pemetaan";
+        layout.classList.toggle("analysis-mode", isAnalysis);
+        layout.classList.toggle("pemetaan-mode", isPemetaan);
+        analysisView.hidden = !isAnalysis;
+        pemetaanView.hidden = !isPemetaan;
+        analysisMenu.classList.toggle("active", isAnalysis);
+        pemetaanMenu.classList.toggle("active", isPemetaan);
+
+        if (isAnalysis || isPemetaan) {
           relationMenus.forEach(button => button.classList.remove("active"));
-          if (analysisFrame.dataset.src) {
-            analysisFrame.src = analysisFrame.dataset.src;
-            delete analysisFrame.dataset.src;
+          const targetFrame = isAnalysis ? analysisFrame : pemetaanFrame;
+          if (targetFrame && targetFrame.dataset.src) {
+            targetFrame.src = targetFrame.dataset.src;
+            delete targetFrame.dataset.src;
           }
           const comparison = document.getElementById("comparisonS4");
           if (comparison) comparison.hidden = true;
           const comparisonMenu = document.getElementById("menuComparisonS4");
           if (comparisonMenu) comparisonMenu.classList.remove("active");
-          const primary = document.querySelector(".main-content:not(#analysisScoreView):not(.cmp-root)");
+          const primary = document.querySelector(".main-content:not(#analysisScoreView):not(#pemetaanInstansiView):not(.cmp-root)");
           if (primary) primary.classList.remove("cmp-primary-hidden");
         }
       }
 
-      analysisMenu.addEventListener("click", () => showAnalysis(true));
-      relationMenus.forEach(button => button.addEventListener("click", () => showAnalysis(false)));
-      analysisSidebarToggle.addEventListener("click", () => {
+      function syncSidebarToggleBtn(btn) {
         sidebarToggle.click();
-        analysisSidebarToggle.setAttribute("aria-expanded", sidebarToggle.getAttribute("aria-expanded"));
-        analysisSidebarToggle.setAttribute("aria-label", sidebarToggle.getAttribute("aria-label"));
-        analysisSidebarToggle.title = sidebarToggle.title;
-      });
+        [analysisSidebarToggle, pemetaanSidebarToggle].forEach((b) => {
+          if (!b) return;
+          b.setAttribute("aria-expanded", sidebarToggle.getAttribute("aria-expanded"));
+          b.setAttribute("aria-label", sidebarToggle.getAttribute("aria-label"));
+          b.title = sidebarToggle.title;
+        });
+      }
+
+      analysisMenu.addEventListener("click", () => activateView("analysis"));
+      pemetaanMenu.addEventListener("click", () => activateView("pemetaan"));
+      relationMenus.forEach(button => button.addEventListener("click", () => activateView("relation")));
+      analysisSidebarToggle.addEventListener("click", () => syncSidebarToggleBtn(analysisSidebarToggle));
+      pemetaanSidebarToggle.addEventListener("click", () => syncSidebarToggleBtn(pemetaanSidebarToggle));
       pairingToggle.addEventListener("click", () => {
         const expanded = pairingToggle.getAttribute("aria-expanded") !== "true";
         pairingToggle.setAttribute("aria-expanded", String(expanded));

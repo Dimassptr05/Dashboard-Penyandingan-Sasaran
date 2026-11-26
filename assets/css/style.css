@@ -5401,7 +5401,8 @@ body.is-generating-pdf .matrix-table td.row-header {
   overflow: hidden;
 }
 
-#analysisScoreView[hidden] {
+#analysisScoreView[hidden],
+#pemetaanInstansiView[hidden] {
   display: none !important;
 }
 
@@ -5434,7 +5435,8 @@ body.is-generating-pdf .matrix-table td.row-header {
   }
 }
 
-.app-layout.analysis-mode > .main-content:not(#analysisScoreView) {
+.app-layout.analysis-mode > .main-content:not(#analysisScoreView),
+.app-layout.pemetaan-mode > .main-content:not(#pemetaanInstansiView) {
   display: none !important;
 }
 

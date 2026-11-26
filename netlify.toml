@@ -37,6 +37,11 @@
   to = "/.netlify/functions/get-indeks-score"
   status = 200
 
+[[redirects]]
+  from = "/api/pemetaan-instansi"
+  to = "/.netlify/functions/get-pemetaan-instansi"
+  status = 200
+
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]

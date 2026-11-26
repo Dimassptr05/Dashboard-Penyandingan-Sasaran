@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pemetaan Per Instansi | Portal Relasi RB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pemetaan-per-instansi.css?v=20261126_v1">
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Pemetaan peran Kementerian / Lembaga</div>
+        <h1>Pemetaan Per Instansi</h1>
+        <p>Telusuri peran instansi dalam proses bisnis tematik, berdasarkan level dan jenis proses.</p>
+      </div>
+      <div class="hero-meta">
+        <div class="sync-pill is-loading" id="syncPill" aria-live="polite">
+          <span class="sync-dot" aria-hidden="true"></span>
+          <span id="syncText">Menghubungkan Google Sheets...</span>
+        </div>
+        <button class="btn-refresh" id="btnRefresh" type="button" title="Muat ulang data terbaru dari Google Sheets">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>
+          </svg>
+          <span>Muat ulang</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Ringkasan hasil filter">
+      <div class="stat">
+        <div class="stat-icon" aria-hidden="true">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M3 21h18M5 21V8l7-5 7 5v13M9 12h1m4 0h1m-6 4h1m4 0h1M11 21v-3h2v3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="stat-label">Instansi ditampilkan</div>
+          <div class="stat-num" id="statTotal">–</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon" aria-hidden="true">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <rect x="4" y="3" width="16" height="18" rx="2"/>
+            <path d="m8 12 3 3 5-6"/>
+          </svg>
+        </div>
+        <div>
+          <div class="stat-label">Instansi memiliki peran</div>
+          <div class="stat-num" id="statMapped">–</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon" aria-hidden="true">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M5 5h14M5 12h14M5 19h14M3 5h.01M3 12h.01M3 19h.01"/>
+          </svg>
+        </div>
+        <div>
+          <div class="stat-label">Baris deskripsi peran</div>
+          <div class="stat-num" id="statRoles">–</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-top">
+        <h2>Data Pemetaan Peran Tematik K/L</h2>
+        <div class="muted">Pilih tab tematik untuk melihat data instansi.</div>
+        <nav class="tabs" id="tabs" aria-label="Tematik" role="tablist"></nav>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label for="instansi">Instansi</label>
+          <select id="instansi" aria-label="Filter Instansi"></select>
+        </div>
+        <div>
+          <label for="level">Level</label>
+          <select id="level" aria-label="Filter Level"></select>
+        </div>
+        <div>
+          <label for="jenis">Jenis Proses</label>
+          <select id="jenis" aria-label="Filter Jenis Proses"></select>
+        </div>
+        <button class="reset" id="reset" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 1 3 6.7M3 4v8h8"/>
+          </svg>
+          Reset filter
+        </button>
+      </div>
+
+      <div class="summary">
+        <div id="results" aria-live="polite">Memuat data pemetaan...</div>
+        <span>— = data belum tersedia pada sumber</span>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <colgroup>
+            <col style="width:6%">
+            <col style="width:26%">
+            <col style="width:10%">
+            <col style="width:41%">
+            <col style="width:17%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>NO</th>
+              <th>Instansi</th>
+              <th>Level</th>
+              <th>Deskripsi Level / Peran</th>
+              <th>Jenis Proses</th>
+            </tr>
+          </thead>
+          <tbody id="body">
+            <tr>
+              <td colspan="5" class="blankstate">
+                <div class="spinner" aria-hidden="true"></div>
+                <strong>Memuat data dari Google Sheets...</strong>
+                Sedang mengambil pemetaan peran instansi untuk enam tematik RB.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <span class="muted" id="pageinfo"></span>
+        <div class="pages" id="pages"></div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span id="footSource">Sumber data: Google Sheets Pemetaan Peran Tematik K/L (Live Sync)</span>
+      <span id="footUpdated">Portal Relasi RB • Kementerian PANRB</span>
+    </footer>
+  </main>
+
+  <script src="js/pemetaan-per-instansi.js?v=20261126_v1"></script>
+</body>
+</html>
