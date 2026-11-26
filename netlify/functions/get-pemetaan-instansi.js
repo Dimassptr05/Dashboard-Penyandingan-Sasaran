@@ -11,15 +11,15 @@ const crypto = require("crypto");
 
 const DEFAULT_SPREADSHEET_ID = "1ZCatB26raLZnT81bJK8_KaFldD3JAexFwNQsHkazxk8";
 
-// Urutan tab dan GID terverifikasi dari Google Sheets aktual.
-// Catatan: tab "Hilirisasi" pada spreadsheet sumber saat ini bernama "Hirilisasi" (GID 2086666800).
+// Urutan tab resmi + alias nama sheet (untuk deteksi GID dinamis agar tahan re-import/rename).
+// GID di bawah adalah snapshot terbaru; runtime selalu mendeteksi GID live dari Google Sheets.
 const THEMATIC_SHEETS = [
-  { key: "Kemiskinan", label: "Kemiskinan", sheetName: "Kemiskinan", gid: "103051798" },
-  { key: "Investasi", label: "Investasi", sheetName: "Investasi", gid: "1764202352" },
-  { key: "Hilirisasi", label: "Hilirisasi", sheetName: "Hirilisasi", gid: "2086666800" },
-  { key: "Ketahanan Pangan", label: "Ketahanan Pangan", sheetName: "Ketahanan Pangan", gid: "411466865" },
-  { key: "Pendidikan", label: "Pendidikan", sheetName: "Pendidikan", gid: "89877206" },
-  { key: "Kesehatan", label: "Kesehatan", sheetName: "Kesehatan", gid: "1858296653" }
+  { key: "Kemiskinan", label: "Kemiskinan", aliases: ["kemiskinan"], sheetName: "Kemiskinan", gid: "1888818258" },
+  { key: "Investasi", label: "Investasi", aliases: ["investasi"], sheetName: "Investasi", gid: "1515604165" },
+  { key: "Hilirisasi", label: "Hilirisasi", aliases: ["hilirisasi", "hirilisasi"], sheetName: "Hirilisasi", gid: "109386080" },
+  { key: "Ketahanan Pangan", label: "Ketahanan Pangan", aliases: ["ketahanan pangan"], sheetName: "Ketahanan Pangan", gid: "329037697" },
+  { key: "Pendidikan", label: "Pendidikan", aliases: ["pendidikan"], sheetName: "Pendidikan", gid: "2000502288" },
+  { key: "Kesehatan", label: "Kesehatan", aliases: ["kesehatan"], sheetName: "Kesehatan", gid: "690304310" }
 ];
 
 const CACHE_TTL_MS = 60 * 1000;
@@ -176,7 +176,6 @@ function parseThematicSheet(rows) {
 
     const hasRoleData = level !== "" || desc !== "" || type !== "";
 
-    // Abaikan baris yang sepenuhnya kosong
     if (no === "" && instansi === "" && !hasRoleData) {
       continue;
     }
@@ -192,13 +191,11 @@ function parseThematicSheet(rows) {
         current.roles.push({ level, desc, type });
       }
     } else if (current) {
-      // Baris lanjutan dari sel gabungan: abaikan bila kolom peran seluruhnya kosong
       if (!hasRoleData) continue;
       current.roles.push({ level, desc, type });
     }
   }
 
-  // Pertahankan instansi yang belum memiliki data peran dengan satu baris placeholder kosong
   for (const g of groups) {
     if (g.roles.length === 0) {
       g.roles.push({ level: "", desc: "", type: "" });
@@ -206,6 +203,45 @@ function parseThematicSheet(rows) {
   }
 
   return groups;
+}
+
+/**
+ * Deteksi daftar tab & GID aktual langsung dari Google Sheets (/htmlview)
+ * agar tidak pernah salah mengambil tab pertama ketika GID berubah pasca re-import.
+ */
+function parseTabsFromHtmlView(html) {
+  const tabs = [];
+  const regex = /items\.push\(\{name:\s*"([^"]+)",[^}]*gid:\s*"(\d+)"/g;
+  let match;
+  while ((match = regex.exec(String(html || ""))) !== null) {
+    tabs.push({ name: match[1], gid: match[2] });
+  }
+  return tabs;
+}
+
+async function discoverSpreadsheetTabs(spreadsheetId) {
+  const res = await httpsRequest(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/htmlview`);
+  if (res.statusCode !== 200) {
+    throw new Error(`Gagal mendeteksi daftar tab Google Sheets: HTTP ${res.statusCode}`);
+  }
+  const tabs = parseTabsFromHtmlView(res.body);
+  if (tabs.length === 0) {
+    throw new Error("Daftar tab Google Sheets tidak ditemukan pada htmlview");
+  }
+  return tabs;
+}
+
+function resolveTabMapping(spec, liveTabs) {
+  const aliases = (spec.aliases || [spec.sheetName, spec.key]).map((a) => String(a).trim().toLowerCase());
+  const matched = liveTabs.find((t) => aliases.includes(String(t.name || "").trim().toLowerCase()));
+  if (!matched) {
+    throw new Error(`Tab Google Sheets untuk tematik "${spec.label}" tidak ditemukan. Tab tersedia: ${liveTabs.map((t) => t.name).join(", ")}`);
+  }
+  return {
+    ...spec,
+    sheetName: matched.name,
+    gid: matched.gid
+  };
 }
 
 async function getGoogleAccessToken(clientEmail, privateKey) {
@@ -247,12 +283,12 @@ async function fetchSheetRowsAPI(spreadsheetId, sheetName, token, apiKey) {
   return JSON.parse(res.body).values || [];
 }
 
-async function fetchSheetRowsCSV(spreadsheetId, spec) {
+async function fetchSheetRowsCSV(spreadsheetId, resolvedSpec) {
   const isValidCsv = (r) => r && r.statusCode === 200 && r.body && r.body.length > 20 && !r.body.trim().startsWith("<!");
+  // Gunakan hanya GID aktual hasil deteksi live; jangan fallback ke URL tanpa GID valid yang berisiko mengembalikan tab pertama
   const urls = [
-    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${spec.gid}`,
-    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${spec.gid}`,
-    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(spec.sheetName)}`
+    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${resolvedSpec.gid}`,
+    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${resolvedSpec.gid}`
   ];
   for (const url of urls) {
     const res = await httpsRequest(url);
@@ -260,7 +296,7 @@ async function fetchSheetRowsCSV(spreadsheetId, spec) {
       return parseCSV(res.body);
     }
   }
-  throw new Error(`Gagal membaca CSV Google Sheets untuk tab ${spec.label}`);
+  throw new Error(`Gagal membaca CSV Google Sheets untuk tab ${resolvedSpec.label} (gid=${resolvedSpec.gid})`);
 }
 
 async function loadThematicData(spreadsheetId, targetSpecs, env) {
@@ -279,8 +315,12 @@ async function loadThematicData(spreadsheetId, targetSpecs, env) {
     fetchMethod = "api_key";
   }
 
+  // Selalu deteksi nama tab & GID aktual langsung dari Google Sheets
+  const liveTabs = await discoverSpreadsheetTabs(spreadsheetId);
+  const resolvedSpecs = targetSpecs.map((spec) => resolveTabMapping(spec, liveTabs));
+
   const results = await Promise.all(
-    targetSpecs.map(async (spec) => {
+    resolvedSpecs.map(async (spec) => {
       const rows = token || apiKey
         ? await fetchSheetRowsAPI(spreadsheetId, spec.sheetName, token, apiKey)
         : await fetchSheetRowsCSV(spreadsheetId, spec);
@@ -310,6 +350,8 @@ exports.parseCSV = parseCSV;
 exports.splitTokens = splitTokens;
 exports.normalizeLevel = normalizeLevel;
 exports.parseThematicSheet = parseThematicSheet;
+exports.parseTabsFromHtmlView = parseTabsFromHtmlView;
+exports.resolveTabMapping = resolveTabMapping;
 
 exports.handler = async function (event) {
   const qs = (event && event.queryStringParameters) || {};

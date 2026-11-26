@@ -16,7 +16,7 @@
     "Pendidikan",
     "Kesehatan"
   ];
-  const CACHE_KEY = "portal_rb_pemetaan_instansi_v1";
+  const CACHE_KEY = "portal_rb_pemetaan_instansi_v2";
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
   let dataByTheme = {};
@@ -509,7 +509,9 @@
   }
 
   async function fetchData(forceRefresh = false) {
-    if (!forceRefresh) {
+    if (forceRefresh) {
+      try { sessionStorage.removeItem(CACHE_KEY); } catch {}
+    } else {
       const cached = readCache();
       if (cached) {
         applyPayload(cached, true);
@@ -522,7 +524,7 @@
     setSyncState("loading", "Memuat data Google Sheets...");
     renderTable();
 
-    const suffix = forceRefresh ? "?refresh=1" : "";
+    const suffix = forceRefresh ? `?refresh=1&_t=${Date.now()}` : "";
     const endpoints = [
       `/api/pemetaan-instansi${suffix}`,
       `/.netlify/functions/get-pemetaan-instansi${suffix}`
